@@ -1,0 +1,383 @@
+"""
+Command Line Interface for AgentTest.
+
+Provides pytest-like CLI commands for AI agent testing.
+"""
+
+import typer
+from pathlib import Path
+from typing import Optional, List
+from rich.console import Console
+from rich.table import Table
+from rich.panel import Panel
+from rich.progress import track
+
+from .core.config import Config
+from .core.init import initialize_project
+from .core.runner import TestRunner
+from .core.git_logger import GitLogger
+from .generators.test_generator import TestGenerator
+from .utils.exceptions import AgentTestError
+
+app = typer.Typer(
+    name="agenttest",
+    help="A pytest-like testing framework for AI agents and prompts",
+    add_completion=False,
+)
+
+console = Console()
+
+@app.command()
+def init(
+    path: Path = typer.Argument(
+        Path("."), 
+        help="Directory to initialize (defaults to current directory)"
+    ),
+    template: str = typer.Option(
+        "basic", 
+        "--template", 
+        "-t",
+        help="Template to use: basic, langchain, llamaindex"
+    ),
+    overwrite: bool = typer.Option(
+        False, 
+        "--overwrite", 
+        help="Overwrite existing configuration"
+    ),
+) -> None:
+    """Initialize a new AgentTest project."""
+    try:
+        console.print("[bold blue]🧪 Initializing AgentTest project...[/bold blue]")
+        
+        success = initialize_project(path, template, overwrite)
+        
+        if success:
+            console.print("[bold green]✅ AgentTest project initialized successfully![/bold green]")
+            console.print(f"📁 Configuration created in: {path / '.agenttest'}")
+            console.print("\n🚀 Next steps:")
+            console.print("1. Configure your agents in .agenttest/config.yaml")
+            console.print("2. Add test cases to tests/")
+            console.print("3. Run: agenttest run")
+        else:
+            console.print("[bold red]❌ Failed to initialize project[/bold red]")
+            raise typer.Exit(1)
+            
+    except AgentTestError as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def run(
+    path: Optional[Path] = typer.Option(
+        None, 
+        "--path", 
+        "-p", 
+        help="Path to test files or directory"
+    ),
+    pattern: str = typer.Option(
+        "test_*.py", 
+        "--pattern", 
+        help="Test file pattern"
+    ),
+    verbose: bool = typer.Option(
+        False, 
+        "--verbose", 
+        "-v", 
+        help="Verbose output"
+    ),
+    ci: bool = typer.Option(
+        False, 
+        "--ci", 
+        help="CI mode - exit with error code on failures"
+    ),
+    output: Optional[Path] = typer.Option(
+        None, 
+        "--output", 
+        "-o", 
+        help="Output file for results"
+    ),
+    tags: Optional[List[str]] = typer.Option(
+        None, 
+        "--tag", 
+        "-t", 
+        help="Run tests with specific tags"
+    ),
+) -> None:
+    """Run agent tests."""
+    try:
+        config = Config.load()
+        runner = TestRunner(config)
+        
+        console.print("[bold blue]🧪 Running AgentTest suite...[/bold blue]")
+        
+        # Discover and run tests
+        results = runner.run_tests(
+            path=path,
+            pattern=pattern,
+            tags=tags,
+            verbose=verbose
+        )
+        
+        # Display results
+        _display_results(results)
+        
+        # Log to git-aware logger
+        git_logger = GitLogger(config)
+        git_logger.log_results(results)
+        
+        # Save output if specified
+        if output:
+            results.save_to_file(output)
+            console.print(f"📄 Results saved to: {output}")
+        
+        # Exit with error code in CI mode if there are failures
+        if ci and results.has_failures():
+            console.print("[bold red]❌ Tests failed - exiting with error code[/bold red]")
+            raise typer.Exit(1)
+            
+        console.print("[bold green]✅ Test run completed![/bold green]")
+        
+    except AgentTestError as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def generate(
+    agent: Optional[str] = typer.Option(
+        None, 
+        "--agent", 
+        "-a", 
+        help="Agent file or class to generate tests for"
+    ),
+    output: Optional[Path] = typer.Option(
+        None, 
+        "--output", 
+        "-o", 
+        help="Output file for generated tests"
+    ),
+    count: int = typer.Option(
+        5, 
+        "--count", 
+        "-c", 
+        help="Number of test cases to generate"
+    ),
+    format: str = typer.Option(
+        "python", 
+        "--format", 
+        "-f", 
+        help="Output format: python, yaml, json"
+    ),
+) -> None:
+    """Generate test cases automatically using AI."""
+    try:
+        config = Config.load()
+        generator = TestGenerator(config)
+        
+        console.print("[bold blue]🤖 Generating test cases...[/bold blue]")
+        
+        if not agent:
+            # Auto-discover agents
+            agents = generator.discover_agents()
+            if not agents:
+                console.print("[yellow]⚠️  No agents found. Please specify --agent parameter[/yellow]")
+                raise typer.Exit(1)
+            agent = agents[0]  # Use first discovered agent
+        
+        # Generate tests
+        with console.status("Generating tests..."):
+            generated_tests = generator.generate_tests(
+                agent_path=agent,
+                count=count,
+                format=format
+            )
+        
+        # Save or display results
+        if output:
+            output.write_text(generated_tests)
+            console.print(f"📄 Generated tests saved to: {output}")
+        else:
+            console.print("[bold green]Generated Tests:[/bold green]")
+            console.print(generated_tests)
+        
+        console.print(f"[bold green]✅ Generated {count} test cases![/bold green]")
+        
+    except AgentTestError as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def log(
+    limit: int = typer.Option(
+        10, 
+        "--limit", 
+        "-l", 
+        help="Number of recent runs to show"
+    ),
+    commit: Optional[str] = typer.Option(
+        None, 
+        "--commit", 
+        "-c", 
+        help="Show results for specific commit"
+    ),
+    branch: Optional[str] = typer.Option(
+        None, 
+        "--branch", 
+        "-b", 
+        help="Show results for specific branch"
+    ),
+) -> None:
+    """Show test run history with git information."""
+    try:
+        config = Config.load()
+        git_logger = GitLogger(config)
+        
+        console.print("[bold blue]📊 Test Run History[/bold blue]")
+        
+        history = git_logger.get_history(
+            limit=limit,
+            commit=commit,
+            branch=branch
+        )
+        
+        if not history:
+            console.print("[yellow]No test history found[/yellow]")
+            return
+        
+        _display_history(history)
+        
+    except AgentTestError as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def compare(
+    base: str = typer.Argument(
+        help="Base commit/branch to compare from"
+    ),
+    target: Optional[str] = typer.Argument(
+        None,
+        help="Target commit/branch to compare to (defaults to HEAD)"
+    ),
+    metric: Optional[str] = typer.Option(
+        None, 
+        "--metric", 
+        "-m", 
+        help="Specific metric to compare"
+    ),
+) -> None:
+    """Compare test results between commits/branches."""
+    try:
+        config = Config.load()
+        git_logger = GitLogger(config)
+        
+        target = target or "HEAD"
+        
+        console.print(f"[bold blue]📊 Comparing {base} → {target}[/bold blue]")
+        
+        comparison = git_logger.compare_results(base, target, metric)
+        
+        _display_comparison(comparison)
+        
+    except AgentTestError as e:
+        console.print(f"[bold red]Error: {e}[/bold red]")
+        raise typer.Exit(1)
+
+
+@app.command()
+def dashboard(
+    port: int = typer.Option(
+        8080, 
+        "--port", 
+        "-p", 
+        help="Port to run dashboard on"
+    ),
+    host: str = typer.Option(
+        "localhost", 
+        "--host", 
+        help="Host to bind dashboard to"
+    ),
+) -> None:
+    """Launch the AgentTest dashboard (future feature)."""
+    console.print("[yellow]🚧 Dashboard feature coming soon![/yellow]")
+    console.print("For now, use 'agenttest log' and 'agenttest compare' commands")
+
+
+def _display_results(results) -> None:
+    """Display test results in a formatted table."""
+    table = Table(title="Test Results")
+    table.add_column("Test", style="cyan")
+    table.add_column("Status", style="bold")
+    table.add_column("Score", style="magenta")
+    table.add_column("Duration", style="green")
+    
+    for result in results.test_results:
+        status = "✅ PASS" if result.passed else "❌ FAIL"
+        score = f"{result.score:.2f}" if result.score is not None else "N/A"
+        duration = f"{result.duration:.2f}s"
+        
+        table.add_row(result.test_name, status, score, duration)
+    
+    console.print(table)
+    
+    # Summary
+    total = len(results.test_results)
+    passed = sum(1 for r in results.test_results if r.passed)
+    failed = total - passed
+    
+    summary = Panel(
+        f"Total: {total} | Passed: {passed} | Failed: {failed}",
+        title="Summary",
+        title_align="left"
+    )
+    console.print(summary)
+
+
+def _display_history(history: List[dict]) -> None:
+    """Display test history in a formatted table."""
+    table = Table(title="Test History")
+    table.add_column("Timestamp", style="cyan")
+    table.add_column("Commit", style="yellow")
+    table.add_column("Branch", style="green")
+    table.add_column("Tests", style="magenta")
+    table.add_column("Pass Rate", style="bold")
+    
+    for entry in history:
+        timestamp = entry['timestamp']
+        commit = entry['commit_hash'][:8]
+        branch = entry['branch']
+        test_count = entry['summary']['total_tests']
+        pass_rate = f"{entry['summary']['pass_rate']:.1f}%"
+        
+        table.add_row(timestamp, commit, branch, str(test_count), pass_rate)
+    
+    console.print(table)
+
+
+def _display_comparison(comparison: dict) -> None:
+    """Display comparison results."""
+    console.print(f"[bold]Base:[/bold] {comparison['base']}")
+    console.print(f"[bold]Target:[/bold] {comparison['target']}")
+    console.print()
+    
+    if comparison.get('improvements'):
+        console.print("[bold green]📈 Improvements:[/bold green]")
+        for improvement in comparison['improvements']:
+            console.print(f"  • {improvement}")
+    
+    if comparison.get('regressions'):
+        console.print("[bold red]📉 Regressions:[/bold red]")
+        for regression in comparison['regressions']:
+            console.print(f"  • {regression}")
+    
+    if comparison.get('new_tests'):
+        console.print("[bold blue]🆕 New Tests:[/bold blue]")
+        for test in comparison['new_tests']:
+            console.print(f"  • {test}")
+
+
+if __name__ == "__main__":
+    app() 
