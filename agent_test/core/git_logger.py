@@ -208,9 +208,12 @@ class GitLogger:
         self, 
         base: str, 
         target: str, 
-        metric: Optional[str] = None
+        metric: Optional[str] = None,
+        filter_by: Optional[str] = None,
+        min_change: float = 0.01,
+        include_unchanged: bool = False
     ) -> Dict[str, Any]:
-        """Compare test results between two commits or branches."""
+        """Compare test results between two commits or branches with enhanced filtering."""
         # Get results for base and target
         base_results = self._get_results_for_ref(base)
         target_results = self._get_results_for_ref(target)
@@ -221,17 +224,46 @@ class GitLogger:
         if not target_results:
             raise GitError(f"No test results found for target: {target}")
         
-        # Compare results
+        # Enhanced comparison structure
         comparison = {
             "base": base,
             "target": target,
             "base_timestamp": base_results.get("timestamp"),
             "target_timestamp": target_results.get("timestamp"),
+            "base_summary": base_results.get("summary", {}),
+            "target_summary": target_results.get("summary", {}),
+            "summary_changes": {},
             "improvements": [],
             "regressions": [],
             "new_tests": [],
-            "removed_tests": []
+            "removed_tests": [],
+            "unchanged": [],
+            "score_changes": [],
+            "evaluator_changes": {},
+            "metadata": {
+                "total_compared": 0,
+                "min_change_threshold": min_change,
+                "filter_applied": filter_by,
+                "metric_focus": metric
+            }
         }
+        
+        # Compare overall summaries
+        base_summary = base_results.get("summary", {})
+        target_summary = target_results.get("summary", {})
+        
+        for key in ["total_tests", "passed", "failed", "pass_rate", "average_score"]:
+            base_val = base_summary.get(key)
+            target_val = target_summary.get(key)
+            if base_val is not None and target_val is not None:
+                if isinstance(base_val, (int, float)) and isinstance(target_val, (int, float)):
+                    change = target_val - base_val
+                    comparison["summary_changes"][key] = {
+                        "base": base_val,
+                        "target": target_val,
+                        "change": change,
+                        "percent_change": (change / base_val * 100) if base_val != 0 else 0
+                    }
         
         # Get test results from both
         base_tests = {test["test_name"]: test for test in base_results.get("test_results", [])}
@@ -246,28 +278,168 @@ class GitLogger:
         
         # Compare common tests
         common_tests = base_test_names & target_test_names
+        comparison["metadata"]["total_compared"] = len(common_tests)
         
         for test_name in common_tests:
             base_test = base_tests[test_name]
             target_test = target_tests[test_name]
             
-            # Compare pass/fail status
-            if base_test["passed"] != target_test["passed"]:
-                if target_test["passed"]:
-                    comparison["improvements"].append(f"{test_name}: FAIL → PASS")
-                else:
-                    comparison["regressions"].append(f"{test_name}: PASS → FAIL")
+            # Apply test name filter if specified
+            if filter_by and filter_by.lower() not in test_name.lower():
+                continue
             
-            # Compare scores if available
-            if base_test.get("score") is not None and target_test.get("score") is not None:
-                score_diff = target_test["score"] - base_test["score"]
-                if abs(score_diff) > 0.1:  # Significant change
-                    if score_diff > 0:
-                        comparison["improvements"].append(f"{test_name}: score improved by {score_diff:.2f}")
-                    else:
-                        comparison["regressions"].append(f"{test_name}: score decreased by {abs(score_diff):.2f}")
+            test_change = {
+                "test_name": test_name,
+                "base_passed": base_test["passed"],
+                "target_passed": target_test["passed"],
+                "base_score": base_test.get("score"),
+                "target_score": target_test.get("score"),
+                "base_duration": base_test.get("duration"),
+                "target_duration": target_test.get("duration"),
+                "base_evaluations": base_test.get("evaluations", {}),
+                "target_evaluations": target_test.get("evaluations", {}),
+                "changes": {}
+            }
+            
+            # Status change analysis
+            status_changed = False
+            if base_test["passed"] != target_test["passed"]:
+                status_changed = True
+                status_change = {
+                    "type": "status",
+                    "from": "PASS" if base_test["passed"] else "FAIL",
+                    "to": "PASS" if target_test["passed"] else "FAIL",
+                    "improvement": target_test["passed"]
+                }
+                test_change["changes"]["status"] = status_change
+                
+                if target_test["passed"]:
+                    comparison["improvements"].append(test_change)
+                else:
+                    comparison["regressions"].append(test_change)
+            
+            # Score change analysis
+            score_changed = False
+            if (base_test.get("score") is not None and 
+                target_test.get("score") is not None):
+                
+                base_score = base_test["score"]
+                target_score = target_test["score"]
+                score_diff = target_score - base_score
+                
+                if abs(score_diff) >= min_change:
+                    score_changed = True
+                    score_change = {
+                        "type": "score",
+                        "from": base_score,
+                        "to": target_score,
+                        "change": score_diff,
+                        "percent_change": (score_diff / base_score * 100) if base_score != 0 else 0,
+                        "improvement": score_diff > 0
+                    }
+                    test_change["changes"]["score"] = score_change
+                    comparison["score_changes"].append(test_change)
+                    
+                    if not status_changed:  # Don't double-count status changes
+                        if score_diff > 0:
+                            comparison["improvements"].append(test_change)
+                        else:
+                            comparison["regressions"].append(test_change)
+            
+            # Duration change analysis
+            if (base_test.get("duration") is not None and 
+                target_test.get("duration") is not None):
+                
+                duration_diff = target_test["duration"] - base_test["duration"]
+                if abs(duration_diff) >= 0.1:  # 100ms threshold
+                    duration_change = {
+                        "type": "duration",
+                        "from": base_test["duration"],
+                        "to": target_test["duration"],
+                        "change": duration_diff,
+                        "improvement": duration_diff < 0  # Faster is better
+                    }
+                    test_change["changes"]["duration"] = duration_change
+            
+            # Evaluator-specific changes
+            self._compare_evaluator_results(
+                base_test.get("evaluations", {}),
+                target_test.get("evaluations", {}),
+                test_change,
+                comparison["evaluator_changes"],
+                metric,
+                min_change
+            )
+            
+            # Add to unchanged if no significant changes
+            if not score_changed and not status_changed and include_unchanged:
+                comparison["unchanged"].append(test_change)
         
         return comparison
+    
+    def _compare_evaluator_results(
+        self, 
+        base_evals: Dict[str, Any], 
+        target_evals: Dict[str, Any], 
+        test_change: Dict[str, Any],
+        evaluator_changes: Dict[str, Any],
+        metric_filter: Optional[str],
+        min_change: float
+    ) -> None:
+        """Compare individual evaluator results."""
+        all_evaluators = set(base_evals.keys()) | set(target_evals.keys())
+        
+        for evaluator_name in all_evaluators:
+            # Skip if metric filter is specified and doesn't match
+            if metric_filter and metric_filter != evaluator_name:
+                continue
+            
+            base_eval = base_evals.get(evaluator_name, {})
+            target_eval = target_evals.get(evaluator_name, {})
+            
+            eval_change = {
+                "evaluator": evaluator_name,
+                "base": base_eval,
+                "target": target_eval,
+                "changes": {}
+            }
+            
+            # Compare scores
+            base_score = base_eval.get("score")
+            target_score = target_eval.get("score")
+            
+            if base_score is not None and target_score is not None:
+                score_diff = target_score - base_score
+                if abs(score_diff) >= min_change:
+                    eval_change["changes"]["score"] = {
+                        "from": base_score,
+                        "to": target_score,
+                        "change": score_diff,
+                        "improvement": score_diff > 0
+                    }
+            
+            # Compare pass/fail
+            base_passed = base_eval.get("passed")
+            target_passed = target_eval.get("passed")
+            
+            if base_passed is not None and target_passed is not None:
+                if base_passed != target_passed:
+                    eval_change["changes"]["status"] = {
+                        "from": "PASS" if base_passed else "FAIL",
+                        "to": "PASS" if target_passed else "FAIL",
+                        "improvement": target_passed
+                    }
+            
+            # Store evaluator changes
+            if eval_change["changes"]:
+                if evaluator_name not in evaluator_changes:
+                    evaluator_changes[evaluator_name] = []
+                evaluator_changes[evaluator_name].append(eval_change)
+                
+                # Add to test change
+                if "evaluators" not in test_change["changes"]:
+                    test_change["changes"]["evaluators"] = {}
+                test_change["changes"]["evaluators"][evaluator_name] = eval_change["changes"]
     
     def _get_results_for_ref(self, ref: str) -> Optional[Dict[str, Any]]:
         """Get test results for a specific git reference (commit or branch)."""

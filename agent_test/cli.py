@@ -292,10 +292,40 @@ def compare(
         None, 
         "--metric", 
         "-m", 
-        help="Specific metric to compare"
+        help="Focus on specific evaluator/metric (similarity, contains, regex, etc.)"
+    ),
+    filter_by: Optional[str] = typer.Option(
+        None,
+        "--filter",
+        "-f", 
+        help="Filter tests by name pattern"
+    ),
+    min_change: float = typer.Option(
+        0.01,
+        "--min-change",
+        "-c",
+        help="Minimum change threshold for scores (default: 0.01)"
+    ),
+    include_unchanged: bool = typer.Option(
+        False,
+        "--include-unchanged",
+        "-u",
+        help="Include tests with no significant changes"
+    ),
+    detailed: bool = typer.Option(
+        False,
+        "--detailed",
+        "-d",
+        help="Show detailed evaluator-level changes"
+    ),
+    export: Optional[str] = typer.Option(
+        None,
+        "--export",
+        "-e",
+        help="Export comparison to JSON file"
     ),
 ) -> None:
-    """Compare test results between commits/branches."""
+    """Compare test results between commits/branches with advanced filtering."""
     try:
         config = Config.load()
         git_logger = GitLogger(config)
@@ -304,9 +334,23 @@ def compare(
         
         console.print(f"[bold blue]📊 Comparing {base} → {target}[/bold blue]")
         
-        comparison = git_logger.compare_results(base, target, metric)
+        comparison = git_logger.compare_results(
+            base, 
+            target, 
+            metric=metric,
+            filter_by=filter_by,
+            min_change=min_change,
+            include_unchanged=include_unchanged
+        )
         
-        _display_comparison(comparison)
+        _display_comparison(comparison, detailed=detailed)
+        
+        # Export if requested
+        if export:
+            import json
+            with open(export, 'w') as f:
+                json.dump(comparison, f, indent=2, default=str)
+            console.print(f"[green]Comparison exported to {export}[/green]")
         
     except AgentTestError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
@@ -453,26 +497,197 @@ def _display_history(history: List[dict]) -> None:
     console.print(table)
 
 
-def _display_comparison(comparison: dict) -> None:
-    """Display comparison results."""
-    console.print(f"[bold]Base:[/bold] {comparison['base']}")
-    console.print(f"[bold]Target:[/bold] {comparison['target']}")
+def _display_comparison(comparison: dict, detailed: bool = False) -> None:
+    """Display enhanced comparison results."""
+    from rich.table import Table
+    from rich.tree import Tree
+    from rich.panel import Panel
+    
+    # Header with metadata
+    metadata = comparison.get('metadata', {})
+    console.print(f"[bold]Base:[/bold] {comparison['base']} ({comparison.get('base_timestamp', 'Unknown time')})")
+    console.print(f"[bold]Target:[/bold] {comparison['target']} ({comparison.get('target_timestamp', 'Unknown time')})")
+    
+    if metadata.get('filter_applied'):
+        console.print(f"[dim]Filter: {metadata['filter_applied']}[/dim]")
+    if metadata.get('metric_focus'):
+        console.print(f"[dim]Metric focus: {metadata['metric_focus']}[/dim]")
     console.print()
     
+    # Summary changes
+    summary_changes = comparison.get('summary_changes', {})
+    if summary_changes:
+        console.print("[bold]📊 Overall Summary Changes:[/bold]")
+        summary_table = Table(show_header=True, header_style="bold blue")
+        summary_table.add_column("Metric")
+        summary_table.add_column("Base", justify="right")
+        summary_table.add_column("Target", justify="right") 
+        summary_table.add_column("Change", justify="right")
+        summary_table.add_column("% Change", justify="right")
+        
+        for metric, change_data in summary_changes.items():
+            change_val = change_data['change']
+            percent_change = change_data['percent_change']
+            
+            # Color coding for changes
+            if change_val > 0:
+                change_str = f"[green]+{change_val:.3f}[/green]"
+                percent_str = f"[green]+{percent_change:.1f}%[/green]"
+            elif change_val < 0:
+                change_str = f"[red]{change_val:.3f}[/red]"
+                percent_str = f"[red]{percent_change:.1f}%[/red]"
+            else:
+                change_str = "0.000"
+                percent_str = "0.0%"
+            
+            summary_table.add_row(
+                metric.replace('_', ' ').title(),
+                str(change_data['base']),
+                str(change_data['target']),
+                change_str,
+                percent_str
+            )
+        
+        console.print(summary_table)
+        console.print()
+    
+    # Test changes overview
+    total_improvements = len(comparison.get('improvements', []))
+    total_regressions = len(comparison.get('regressions', []))
+    total_new = len(comparison.get('new_tests', []))
+    total_removed = len(comparison.get('removed_tests', []))
+    total_unchanged = len(comparison.get('unchanged', []))
+    
+    overview_tree = Tree("🔍 Test Changes Overview")
+    if total_improvements > 0:
+        overview_tree.add(f"[green]📈 Improvements: {total_improvements}[/green]")
+    if total_regressions > 0:
+        overview_tree.add(f"[red]📉 Regressions: {total_regressions}[/red]")
+    if total_new > 0:
+        overview_tree.add(f"[blue]🆕 New Tests: {total_new}[/blue]")
+    if total_removed > 0:
+        overview_tree.add(f"[yellow]🗑️ Removed Tests: {total_removed}[/yellow]")
+    if total_unchanged > 0:
+        overview_tree.add(f"[dim]😐 Unchanged: {total_unchanged}[/dim]")
+    
+    console.print(overview_tree)
+    console.print()
+    
+    # Detailed improvements
     if comparison.get('improvements'):
         console.print("[bold green]📈 Improvements:[/bold green]")
         for improvement in comparison['improvements']:
-            console.print(f"  • {improvement}")
+            _display_test_change(improvement, "improvement", detailed)
+        console.print()
     
+    # Detailed regressions
     if comparison.get('regressions'):
         console.print("[bold red]📉 Regressions:[/bold red]")
         for regression in comparison['regressions']:
-            console.print(f"  • {regression}")
+            _display_test_change(regression, "regression", detailed)
+        console.print()
     
+    # New tests
     if comparison.get('new_tests'):
         console.print("[bold blue]🆕 New Tests:[/bold blue]")
         for test in comparison['new_tests']:
-            console.print(f"  • {test}")
+            console.print(f"  • [blue]{test}[/blue]")
+        console.print()
+    
+    # Removed tests
+    if comparison.get('removed_tests'):
+        console.print("[bold yellow]🗑️ Removed Tests:[/bold yellow]")
+        for test in comparison['removed_tests']:
+            console.print(f"  • [yellow]{test}[/yellow]")
+        console.print()
+    
+    # Score changes (if not already shown in improvements/regressions)
+    score_changes = comparison.get('score_changes', [])
+    significant_score_changes = [
+        change for change in score_changes 
+        if change not in comparison.get('improvements', []) and 
+           change not in comparison.get('regressions', [])
+    ]
+    
+    if significant_score_changes:
+        console.print("[bold]📊 Score Changes:[/bold]")
+        for change in significant_score_changes:
+            _display_test_change(change, "score_change", detailed)
+        console.print()
+    
+    # Evaluator-specific changes (detailed mode)
+    if detailed and comparison.get('evaluator_changes'):
+        console.print("[bold]🔍 Evaluator-Specific Changes:[/bold]")
+        for evaluator, changes in comparison['evaluator_changes'].items():
+            console.print(f"  [bold]{evaluator}:[/bold]")
+            for change in changes:
+                test_name = change.get('test_name', 'Unknown')
+                changes_detail = change.get('changes', {})
+                
+                for change_type, change_data in changes_detail.items():
+                    if change_type == 'score':
+                        score_change = change_data['change']
+                        color = "green" if score_change > 0 else "red"
+                        console.print(f"    • {test_name}: [{color}]{change_data['from']:.3f} → {change_data['to']:.3f} ({score_change:+.3f})[/{color}]")
+                    elif change_type == 'status':
+                        color = "green" if change_data['improvement'] else "red"
+                        console.print(f"    • {test_name}: [{color}]{change_data['from']} → {change_data['to']}[/{color}]")
+        console.print()
+    
+    # Unchanged tests (if requested)
+    if comparison.get('unchanged'):
+        console.print(f"[dim]😐 Unchanged Tests ({len(comparison['unchanged'])}):[/dim]")
+        for unchanged in comparison['unchanged'][:5]:  # Show only first 5
+            console.print(f"  • [dim]{unchanged['test_name']}[/dim]")
+        if len(comparison['unchanged']) > 5:
+            console.print(f"  • [dim]... and {len(comparison['unchanged']) - 5} more[/dim]")
+        console.print()
+
+
+def _display_test_change(change: dict, change_type: str, detailed: bool = False) -> None:
+    """Display individual test change with details."""
+    test_name = change['test_name']
+    changes = change.get('changes', {})
+    
+    # Main change description
+    main_change = ""
+    color = "white"
+    
+    if 'status' in changes:
+        status_change = changes['status']
+        color = "green" if status_change['improvement'] else "red"
+        main_change = f"{status_change['from']} → {status_change['to']}"
+    
+    if 'score' in changes:
+        score_change = changes['score']
+        score_color = "green" if score_change['improvement'] else "red"
+        score_text = f"score: {score_change['from']:.3f} → {score_change['to']:.3f} ({score_change['change']:+.3f})"
+        
+        if main_change:
+            main_change += f", {score_text}"
+        else:
+            main_change = score_text
+            color = score_color
+    
+    console.print(f"  • [{color}]{test_name}[/{color}]: {main_change}")
+    
+    # Additional details if requested
+    if detailed:
+        if 'duration' in changes:
+            duration_change = changes['duration']
+            duration_color = "green" if duration_change['improvement'] else "yellow"
+            console.print(f"    Duration: [{duration_color}]{duration_change['from']:.3f}s → {duration_change['to']:.3f}s ({duration_change['change']:+.3f}s)[/{duration_color}]")
+        
+        if 'evaluators' in changes:
+            console.print("    Evaluator changes:")
+            for evaluator, eval_changes in changes['evaluators'].items():
+                for change_type, change_data in eval_changes.items():
+                    if change_type == 'score':
+                        eval_color = "green" if change_data['improvement'] else "red"
+                        console.print(f"      {evaluator}: [{eval_color}]{change_data['from']:.3f} → {change_data['to']:.3f}[/{eval_color}]")
+                    elif change_type == 'status':
+                        eval_color = "green" if change_data['improvement'] else "red"
+                        console.print(f"      {evaluator}: [{eval_color}]{change_data['from']} → {change_data['to']}[/{eval_color}]")
 
 
 if __name__ == "__main__":

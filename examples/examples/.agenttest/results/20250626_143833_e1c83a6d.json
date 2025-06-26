@@ -1,0 +1,56 @@
+{
+  "timestamp": "2025-06-26T14:38:33.381868",
+  "git_info": {
+    "commit_hash": "e1c83a6d81b72819664e35fac186bcc9d4759436",
+    "commit_hash_short": "e1c83a6d",
+    "branch": "main",
+    "commit_message": "fix: fix test in examples",
+    "author": "Nihal Srivastava",
+    "commit_date": "2025-06-26T14:32:50+05:30",
+    "changed_files": [],
+    "untracked_files": [],
+    "is_dirty": false,
+    "recent_commits": [
+      {
+        "hash": "e1c83a6d",
+        "message": "fix: fix test in examples",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T14:32:50+05:30"
+      },
+      {
+        "hash": "ecf0ab81",
+        "message": "fix: contains and regex expression",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T14:25:00+05:30"
+      },
+      {
+        "hash": "95eadec3",
+        "message": "feat: add metrics evaluator",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T12:43:00+05:30"
+      },
+      {
+        "hash": "1b6fe0af",
+        "message": "feat: add detailed logging and reason for fail",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T11:57:34+05:30"
+      },
+      {
+        "hash": "b7c9d028",
+        "message": "feat: add examples and tests for them",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T11:30:00+05:30"
+      }
+    ]
+  },
+  "summary": {
+    "total_tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "pass_rate": 0.0,
+    "average_score": null,
+    "total_duration": 0
+  },
+  "test_results": [],
+  "metadata": {}
+}
