@@ -382,22 +382,207 @@ agenttest compare abc123 --detailed
 
 ## 🤖 agenttest generate
 
-Auto-generate test cases using AI for your agents and use cases.
+Automatically analyze your code and generate comprehensive test cases with intelligent project structure understanding.
 
 ### Syntax
 
 ```bash
-agenttest generate [OPTIONS]
+agenttest generate [FILE_PATH] [OPTIONS]
 ```
 
-### Parameters
+### Core Parameters
 
-| Parameter      | Type    | Default  | Description           |
-| -------------- | ------- | -------- | --------------------- |
-| `--agent, -a`  | String  | None     | Agent file or class   |
-| `--output, -o` | Path    | None     | Output file for tests |
-| `--count, -c`  | Integer | `5`      | Number of test cases  |
-| `--format, -f` | String  | `python` | Output format         |
+| Parameter        | Type    | Default  | Description                      |
+| ---------------- | ------- | -------- | -------------------------------- |
+| `FILE_PATH`      | String  | Required | Agent file to analyze and test   |
+| `--count, -c`    | Integer | `5`      | Number of test cases to generate |
+| `--format, -f`   | String  | `python` | Output format (python/yaml/json) |
+| `--output, -o`   | Path    | None     | Save generated tests to file     |
+| `--template, -t` | Path    | None     | Custom Jinja2 template           |
+
+### Advanced Parameters
+
+| Parameter         | Type    | Default | Description                      |
+| ----------------- | ------- | ------- | -------------------------------- |
+| `--no-llm`        | Boolean | `false` | Use fallback mode (no LLM)       |
+| `--search-dirs`   | String  | None    | Additional directories to search |
+| `--include-edge`  | Boolean | `true`  | Include edge case tests          |
+| `--include-error` | Boolean | `true`  | Include error handling tests     |
+
+### Intelligence Features
+
+The generator automatically:
+
+- 🔍 **Analyzes project structure** to generate correct imports
+- 🎯 **Understands functions and classes** to create proper test calls
+- 📝 **Generates realistic test data** based on parameter names and types
+- 🧪 **Creates multiple test scenarios** (basic, edge cases, error handling)
+- 🏗️ **Handles class instantiation** automatically for method testing
+
+### Examples
+
+#### Basic Generation
+
+```bash
+# Generate tests for a specific file
+agenttest generate examples/agents_sample.py
+
+# Generate more test cases
+agenttest generate examples/agents_sample.py --count 10
+
+# Generate with specific format
+agenttest generate examples/agents_sample.py --format yaml
+```
+
+#### Advanced Generation
+
+```bash
+# Save to specific file
+agenttest generate agents/my_agent.py --output tests/generated_test.py
+
+# Use custom template
+agenttest generate agents/my_agent.py --template custom_template.py.j2
+
+# Generate without LLM (fallback mode)
+agenttest generate agents/my_agent.py --no-llm --count 3
+```
+
+#### Multiple Files
+
+```bash
+# Generate for multiple files
+agenttest generate examples/*.py --count 3
+
+# Generate for specific patterns
+agenttest generate "agents/*_agent.py" --count 2
+```
+
+### Output Formats
+
+#### Python Format (Default)
+
+Generates executable Python test files:
+
+```python
+@agent_test(
+    criteria=["execution", "output_type", "functionality"],
+    tags=["basic", "function"]
+)
+def test_handle_customer_query_basic():
+    """Test basic functionality of handle_customer_query"""
+    input_data = {
+        "query": "test query",
+        "customer_type": "premium",
+        "urgency": "high"
+    }
+
+    # Automatically generated function call
+    actual = handle_customer_query(**input_data)
+
+    return {
+        "input": input_data,
+        "actual": actual,
+        "evaluation_criteria": {
+            "execution": "Function should execute without errors",
+            "output_type": "Should return appropriate type"
+        }
+    }
+```
+
+#### YAML Format
+
+```yaml
+agent: agents_sample
+description: Generated tests for agents_sample
+test_cases:
+  - name: test_handle_customer_query_basic
+    description: Test basic functionality of handle_customer_query
+    function_to_test: handle_customer_query
+    input_data:
+      query: 'test query'
+      customer_type: 'premium'
+    expected_behavior: Should execute handle_customer_query successfully
+```
+
+#### JSON Format
+
+```json
+{
+  "agent": "agents_sample",
+  "description": "Generated tests for agents_sample",
+  "test_cases": [
+    {
+      "name": "test_handle_customer_query_basic",
+      "description": "Test basic functionality of handle_customer_query",
+      "function_to_test": "handle_customer_query",
+      "input_data": {
+        "query": "test query",
+        "customer_type": "premium"
+      }
+    }
+  ]
+}
+```
+
+### Generated Test Types
+
+#### Function Tests
+
+- **Basic functionality**: Normal operation with typical inputs
+- **Edge cases**: Empty inputs, boundary values, null conditions
+- **Error handling**: Invalid inputs and exception scenarios
+
+#### Class Tests
+
+- **Constructor tests**: Object creation with proper arguments
+- **Method tests**: Instance method calls with realistic data
+- **Integration tests**: Multi-method workflows
+
+### Customization
+
+#### Custom Templates
+
+Create `.agenttest/templates/test_template.py.j2`:
+
+```jinja2
+"""
+Custom test template for {{ agent_name }}.
+"""
+
+from agent_test import agent_test
+{%- if agent_module_path %}
+from {{ agent_module_path }} import *
+{%- endif %}
+
+{%- for test_case in test_cases %}
+@agent_test(
+    criteria=[{%- for criterion in test_case.evaluation_criteria.keys() -%}"{{ criterion }}"{%- if not loop.last %}, {% endif -%}{%- endfor -%}],
+    tags={{ test_case.tags | tojson }}
+)
+def {{ test_case.name }}():
+    """{{ test_case.description }}"""
+    # Your custom test logic here
+    pass
+{%- endfor %}
+```
+
+#### Configuration
+
+Set generation preferences in `.agenttest/config.yaml`:
+
+```yaml
+generation:
+  default_count: 5
+  include_edge_cases: true
+  include_error_handling: true
+  default_format: python
+
+llm:
+  provider: openai
+  model: gpt-4
+  temperature: 0.7
+  max_tokens: 3000
+```
 
 ### Formats
 

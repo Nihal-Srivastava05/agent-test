@@ -39,7 +39,9 @@ AgentTest is a comprehensive testing framework designed specifically for AI agen
 
 ## 🚀 Key Features
 
-- **pytest-like Syntax**: Familiar testing patterns for AI agents
+- **🤖 Intelligent Auto Test Generation**: Automatically analyze your code and generate comprehensive test cases with proper imports and function calls
+- **🧪 Pytest-like Interface**: Familiar CLI and decorator-based testing
+- **🧠 Smart Code Analysis**: Understands project structure, classes, functions, and generates realistic test data
 - **Multiple Evaluators**: String similarity, LLM judges, NLP metrics, pattern matching
 - **Git Integration**: Track performance across commits with detailed comparisons
 - **Rich CLI**: Comprehensive command-line interface with filtering and export options

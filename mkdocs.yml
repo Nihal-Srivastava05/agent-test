@@ -167,6 +167,7 @@ nav:
   - User Guide:
       - Configuration: configuration.md
       - Writing Tests: writing-tests.md
+      - Auto Test Generation: auto-test-generation.md
       - CLI Commands: cli-commands.md
       - Git Integration: git-integration.md
 

@@ -10,8 +10,9 @@ AgentTest is a comprehensive testing framework designed specifically for AI agen
 
 ## 🚀 Key Features
 
+- **🤖 Intelligent Auto Test Generation**: Automatically analyze your code and generate comprehensive test cases with proper imports and function calls
 - **🧪 Pytest-like Interface**: Familiar CLI and decorator-based testing
-- **🤖 AI-Powered Test Generation**: Auto-generate test cases using LLMs
+- **🧠 Smart Code Analysis**: Understands project structure, classes, functions, and generates realistic test data
 - **📊 Multiple Evaluation Engines**: String similarity, LLM-as-judge, regex, and more
 - **🔄 Git-Aware Logging**: Track test results with commit information for regression analysis
 - **🔗 Framework Agnostic**: Works with LangChain, LlamaIndex, OpenAI, Anthropic, and custom agents
@@ -98,14 +99,58 @@ agenttest run --tag edge_case
 agenttest run --ci
 ```
 
-### 4. Generate Tests Automatically
+### 4. Generate Tests Automatically ✨
+
+AgentTest can automatically analyze your code and generate comprehensive test cases:
 
 ```bash
-# Auto-generate tests for an agent
-agenttest generate --agent agents/my_agent.py --count 5
+# Auto-generate tests for a specific file
+agenttest generate examples/agents_sample.py --count 5
 
-# Generate and save to file
-agenttest generate --agent agents/my_agent.py --output tests/generated_tests.py
+# Generate tests with specific format
+agenttest generate examples/agents_sample.py --format python --count 3
+
+# Generate tests for multiple files
+agenttest generate examples/*.py --count 2
+
+# Save generated tests to a file
+agenttest generate agents/my_agent.py --output tests/generated_tests.py
+```
+
+**What makes it intelligent?**
+
+- 🔍 **Analyzes project structure** to generate correct imports
+- 🎯 **Understands functions and classes** to create proper test calls
+- 📝 **Generates realistic test data** based on parameter names and types
+- 🧪 **Creates multiple test scenarios** (basic, edge cases, error handling)
+- 🏗️ **Handles class instantiation** automatically for method testing
+
+**Example generated test:**
+
+```python
+@agent_test(
+    criteria=["execution", "output_type", "functionality"],
+    tags=["basic", "function"]
+)
+def test_handle_customer_query_basic():
+    """Test basic functionality of handle_customer_query"""
+    input_data = {
+        "query": "test query",
+        "customer_type": "premium",
+        "urgency": "high"
+    }
+
+    # Automatically generated function call
+    actual = handle_customer_query(**input_data)
+
+    return {
+        "input": input_data,
+        "actual": actual,
+        "evaluation_criteria": {
+            "execution": "Function should execute without errors",
+            "output_type": "Should return appropriate type"
+        }
+    }
 ```
 
 ### 5. View Test History
@@ -418,6 +463,7 @@ The documentation includes:
 
 - **Installation & Setup**: Complete installation guide
 - **Quick Start**: Get started in 5 minutes
+- **Auto Test Generation**: Comprehensive guide to intelligent test generation
 - **User Guide**: Configuration, writing tests, CLI commands
 - **Evaluators**: Detailed guide for all evaluation methods
 - **Examples**: Practical examples and tutorials
