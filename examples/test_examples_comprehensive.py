@@ -5,8 +5,8 @@ This file demonstrates all AgentTest evaluators with detailed examples
 and real-world use cases.
 """
 
-from agenttest import agent_test
-from agents_sample import handle_customer_query, quick_support_response
+from agent_test import agent_test
+from .agents_sample import handle_customer_query, quick_support_response
 
 
 # =============================================================================

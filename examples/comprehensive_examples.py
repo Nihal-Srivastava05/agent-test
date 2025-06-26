@@ -5,7 +5,7 @@ This file demonstrates all AgentTest evaluators with detailed examples
 and real-world use cases.
 """
 
-from agenttest import agent_test
+from agent_test import agent_test
 
 
 # Sample agent function for testing

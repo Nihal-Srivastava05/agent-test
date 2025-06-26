@@ -79,14 +79,17 @@ Repository = "https://github.com/agenttest-ai/agenttest"
 Issues = "https://github.com/agenttest-ai/agenttest/issues"
 
 [project.scripts]
-agenttest = "agenttest.cli:app"
+agenttest = "agent_test.cli:app"
 
 [tool.hatch.version]
-path = "agenttest/__init__.py"
+path = "agent_test/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["agent_test"]
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/agenttest",
+    "/agent_test",
     "/tests",
     "/docs",
     "/examples",
