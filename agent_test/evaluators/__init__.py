@@ -6,6 +6,7 @@ This package contains different evaluators for testing AI agent outputs.
 
 from .base import BaseEvaluator, EvaluationResult, StringSimilarityEvaluator, RegexEvaluator
 from .llm_judge import LLMJudgeEvaluator
+from .metrics import MetricsEvaluator
 from .registry import EvaluatorRegistry
 
 __all__ = [
@@ -14,5 +15,6 @@ __all__ = [
     "StringSimilarityEvaluator",
     "RegexEvaluator",
     "LLMJudgeEvaluator",
+    "MetricsEvaluator",
     "EvaluatorRegistry",
 ] 

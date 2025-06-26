@@ -7,6 +7,7 @@ Manages and provides access to all available evaluators.
 from typing import Dict, Optional, Any
 from .base import BaseEvaluator, StringSimilarityEvaluator, RegexEvaluator
 from .llm_judge import LLMJudgeEvaluator
+from .metrics import MetricsEvaluator
 from ..core.config import Config
 from ..utils.exceptions import EvaluationError
 
@@ -29,6 +30,14 @@ class EvaluatorRegistry:
         # Regex evaluator
         regex_config = self._get_evaluator_config("regex") 
         self._evaluators["regex"] = RegexEvaluator(regex_config)
+        
+        # Metrics evaluator (ROUGE, BLEU, METEOR)
+        metrics_config = self._get_evaluator_config("metrics")
+        self._evaluators["metrics"] = MetricsEvaluator(metrics_config)
+        
+        # Contains evaluator (defined in this file)
+        contains_config = self._get_evaluator_config("contains")
+        self._evaluators["contains"] = ContainsEvaluator(contains_config)
         
         # LLM judge evaluator
         llm_config = self._get_evaluator_config("llm_judge")
