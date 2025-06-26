@@ -102,7 +102,7 @@ def test_smart_agent_weather():
     return {
         "input": input_text,
         "actual": actual,
-        "expected": ["weather", "app"]  # Should contain these words
+        "contains": ["weather", "app"]  # Should contain these words
     }
 
 

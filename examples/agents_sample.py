@@ -5,7 +5,7 @@ This file contains sample implementations of different types of AI agents
 that can be used to demonstrate AgentTest features.
 """
 
-import openai
+import google.generativeai as genai
 import json
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
@@ -27,8 +27,8 @@ class CustomerSupportAgent:
     
     def __init__(self, api_key: str):
         """Initialize the customer support agent."""
-        self.client = openai.OpenAI(api_key=api_key)
-        self.model = "gpt-4"
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-1.5-flash')
         
         # Knowledge base for common issues
         self.knowledge_base = {
@@ -91,7 +91,7 @@ class CustomerSupportAgent:
             kb_response = None
         
         # Generate AI response
-        system_prompt = f"""
+        prompt = f"""
         You are a helpful customer support agent. 
         Customer type: {query.customer_type}
         Query category: {category}
@@ -102,20 +102,20 @@ class CustomerSupportAgent:
         If you have knowledge base info, incorporate it appropriately.
         
         Knowledge base info: {kb_response}
+        
+        Customer query: {query.query}
         """
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": query.query}
-                ],
-                temperature=0.3,
-                max_tokens=300
+            response = self.model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=300
+                )
             )
             
-            ai_response = response.choices[0].message.content
+            ai_response = response.text
             
             return {
                 "response": ai_response,
@@ -138,9 +138,10 @@ def handle_customer_query(query: str, customer_type: str = "regular", urgency: s
     """Handle a customer query with default agent."""
     import os
     
-    api_key = os.getenv("OPENAI_API_KEY")
+    # Try both Gemini environment variable names
+    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable not set")
+        raise ValueError("GOOGLE_API_KEY or GEMINI_API_KEY environment variable not set")
     
     agent = CustomerSupportAgent(api_key)
     customer_query = CustomerQuery(

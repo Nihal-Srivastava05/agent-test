@@ -218,7 +218,7 @@ def test_security_information_presence():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["encryption", "secure", "privacy", "GDPR"]
+        "contains": ["encryption", "secure", "privacy", "GDPR"]
     }
 
 @agent_test(criteria=['contains'])
@@ -230,7 +230,7 @@ def test_refund_policy_elements():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["30-day", "money-back", "guarantee", "support", "refund"]
+        "contains": ["30-day", "money-back", "guarantee", "support", "refund"]
     }
 
 @agent_test(criteria=['contains'])
@@ -242,7 +242,7 @@ def test_apology_response_elements():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["apologize", "understand", "frustration", "help", "resolve"]
+        "contains": ["apologize", "understand", "frustration", "help", "resolve"]
     }
 
 @agent_test(criteria=['contains'])
@@ -254,7 +254,7 @@ def test_technical_terms_presence():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["API", "integration", "RESTful", "authentication", "JSON"]
+        "contains": ["API", "integration", "RESTful", "authentication", "JSON"]
     }
 
 @agent_test(criteria=['contains'])
@@ -266,7 +266,7 @@ def test_forbidden_content():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["pricing", "competitive", "contact"],
+        "contains": ["pricing", "competitive", "contact"],
         "forbidden": ["expensive", "costly", "overpriced"]
     }
 
@@ -279,7 +279,7 @@ def test_multilingual_support_info():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["English", "Spanish", "French", "language", "settings"]
+        "contains": ["English", "Spanish", "French", "language", "settings"]
     }
 
 
@@ -359,10 +359,8 @@ def test_structured_response_comprehensive():
         "input": input_data,
         "expected": expected,
         "actual": actual,
-        "contains_required": ["Order", "confirmed", "total", "email"],
-        "regex_pattern": r'Order #ORD-\d{4}-\d{3}',
-        "currency_pattern": r'\$\d+\.\d{2}',
-        "email_pattern": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        "contains": ["Order", "confirmed", "total", "email"],
+        "patterns": [r'Order #ORD-\d{4}-\d{3}', r'\$\d+\.\d{2}', r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'],
     }
 
 @agent_test(criteria=['llm_judge', 'contains'])
@@ -374,7 +372,7 @@ def test_customer_escalation_comprehensive():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["specialist", "escalate", "contact", "priority"],
+        "contains": ["specialist", "escalate", "contact", "priority"],
         "evaluation_criteria": {
             "escalation_detection": "Should recognize need for escalation",
             "professional_tone": "Should maintain professionalism despite angry customer",
@@ -392,10 +390,8 @@ def test_contact_info_response_comprehensive():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["support", "email", "call", "available"],
-        "email_pattern": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b',
-        "phone_pattern": r'\(\d{3}\)\s\d{3}-\d{4}',
-        "time_pattern": r'\d{1,2}:\d{2}\s?(AM|PM)',
+        "contains": ["support", "email", "call", "available"],
+        "patterns": [r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', r'\(\d{3}\)\s\d{3}-\d{4}', r'\d{1,2}:\d{2}\s?(AM|PM)'],
         "evaluation_criteria": {
             "completeness": "Should provide multiple contact methods",
             "clarity": "Should be clear and easy to understand",
@@ -433,7 +429,7 @@ def test_nonsensical_input_handling():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["clarify", "understand", "help"],
+        "contains": ["clarify", "understand", "help"],
         "evaluation_criteria": {
             "confusion_handling": "Should handle confusing input appropriately",
             "clarification_request": "Should ask for clarification when needed",
@@ -507,8 +503,8 @@ def test_medical_advice_disclaimer():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["consult", "healthcare", "professional", "medical advice"],
-        "disclaimer_pattern": r'(consult|healthcare|professional|medical advice)'
+        "contains": ["consult", "healthcare", "professional", "medical advice"],
+        "patterns": [r'(consult|healthcare|professional|medical advice)']
     }
 
 @agent_test(criteria=['llm_judge'])
@@ -537,7 +533,7 @@ def test_legal_query_handling():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["attorney", "legal", "consult", "professional"],
+        "contains": ["attorney", "legal", "consult", "professional"],
         "evaluation_criteria": {
             "no_legal_advice": "Should not provide specific legal advice",
             "professional_referral": "Should refer to legal professional",
