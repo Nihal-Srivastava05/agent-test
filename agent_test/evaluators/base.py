@@ -7,6 +7,7 @@ Provides the interface and common functionality for all evaluators.
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Union, List
 from dataclasses import dataclass
+import re
 
 
 @dataclass
@@ -254,49 +255,131 @@ class StringSimilarityEvaluator(BaseEvaluator):
         return intersection / max(len(words1), len(words2))
 
 
+class ContainsEvaluator(BaseEvaluator):
+    """Evaluator that checks if the actual output contains expected strings or values."""
+    
+    @property
+    def name(self) -> str:
+        return "contains"
+    
+    def evaluate(self, test_output: Any) -> EvaluationResult:
+        data = self._extract_test_data(test_output)
+        actual = data.get('actual', '')
+        contains = data.get('contains')
+        
+        if contains is None:
+            return EvaluationResult(
+                score=0.0,
+                passed=False,
+                details={'error': "No 'contains' field specified"}
+            )
+        
+        # Convert actual to string if it's not already
+        if not isinstance(actual, str):
+            actual = str(actual)
+        
+        # Convert single item to list for uniform processing
+        if not isinstance(contains, list):
+            contains = [contains]
+        
+        # Check which items are found
+        found_items = []
+        missing_items = []
+        
+        for item in contains:
+            item_str = str(item).lower()
+            if item_str in actual.lower():
+                found_items.append(item)
+            else:
+                missing_items.append(item)
+        
+        # Calculate score as percentage of items found
+        score = len(found_items) / len(contains) if contains else 0.0
+        
+        details = {
+            'contains': contains,
+            'found': found_items,
+            'missing': missing_items,
+            'actual': actual
+        }
+        
+        return EvaluationResult(
+            score=score,
+            passed=score == 1.0,
+            details=details
+        )
+
+
 class RegexEvaluator(BaseEvaluator):
-    """Evaluator for regex pattern matching."""
+    """Evaluator that checks if the actual output matches regex patterns."""
     
     @property
     def name(self) -> str:
         return "regex"
     
     def evaluate(self, test_output: Any) -> EvaluationResult:
-        """Evaluate based on regex pattern matching."""
-        try:
-            import re
-            
-            data = self._extract_test_data(test_output)
-            actual = data.get("actual")
-            pattern = data.get("pattern") or self._get_config_value("pattern")
-            
-            if actual is None:
-                return EvaluationResult(
-                    passed=False,
-                    error="No 'actual' value found in test output"
-                )
-            
-            if not pattern:
-                return EvaluationResult(
-                    passed=False,
-                    error="No regex pattern specified"
-                )
-            
-            match = re.search(pattern, str(actual))
-            passed = match is not None
-            
+        data = self._extract_test_data(test_output)
+        actual = data.get('actual', '')
+        patterns = data.get('patterns')
+        single_pattern = data.get('pattern')  # Support both patterns and pattern
+        
+        # Convert actual to string if it's not already
+        if not isinstance(actual, str):
+            actual = str(actual)
+        
+        # Handle both 'patterns' (list) and 'pattern' (single)
+        if patterns is not None:
+            if not isinstance(patterns, list):
+                patterns = [patterns]
+        elif single_pattern is not None:
+            patterns = [single_pattern]
+        else:
             return EvaluationResult(
-                passed=passed,
-                score=1.0 if passed else 0.0,
-                details={
-                    "actual": actual,
-                    "pattern": pattern,
-                    "match": match.group() if match else None
-                }
-            )
-            
-        except Exception as e:
-            return EvaluationResult(
+                score=0.0,
                 passed=False,
-                error=f"Regex evaluation failed: {str(e)}"
-            ) 
+                details={'error': "No regex pattern(s) specified"}
+            )
+        
+        # Test each pattern
+        pattern_results = []
+        matches_found = 0
+        
+        for pattern in patterns:
+            try:
+                match = re.search(pattern, actual)
+                if match:
+                    matches_found += 1
+                    pattern_results.append({
+                        'pattern': pattern,
+                        'matched': True,
+                        'match': match.group()
+                    })
+                else:
+                    pattern_results.append({
+                        'pattern': pattern,
+                        'matched': False,
+                        'match': None
+                    })
+            except re.error as e:
+                pattern_results.append({
+                    'pattern': pattern,
+                    'matched': False,
+                    'error': str(e)
+                })
+        
+        # Calculate score as percentage of patterns that matched
+        score = matches_found / len(patterns) if patterns else 0.0
+        
+        details = {
+            'patterns': patterns,
+            'pattern_results': pattern_results,
+            'matches_found': matches_found,
+            'total_patterns': len(patterns),
+            'actual': actual
+        }
+        
+        return EvaluationResult(
+            score=score,
+            passed=score > 0.0,  # Pass if at least one pattern matches
+            details=details
+        ) 

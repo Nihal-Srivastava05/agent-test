@@ -147,7 +147,7 @@ def test_security_information_presence():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["encryption", "secure", "privacy"]
+        "contains": ["encryption", "secure", "privacy"]
     }
 
 
@@ -160,7 +160,7 @@ def test_refund_policy_elements():
     return {
         "input": input_data,
         "actual": actual,
-        "expected": ["30-day", "money-back", "guarantee", "support", "refund"]
+        "contains": ["30-day", "money-back", "guarantee", "support", "refund"]
     }
 
 
@@ -203,8 +203,8 @@ def test_structured_response_comprehensive():
         "input": input_data,
         "expected": expected,
         "actual": actual,
-        "contains_required": ["Order", "confirmed", "total", "email"],
-        "regex_patterns": [
+        "contains": ["Order", "confirmed", "total", "email"],
+        "patterns": [
             r'Order #ORD-\d{4}-\d{3}',
             r'\$\d+\.\d{2}',
             r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'

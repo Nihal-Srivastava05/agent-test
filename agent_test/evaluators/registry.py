@@ -5,7 +5,7 @@ Manages and provides access to all available evaluators.
 """
 
 from typing import Dict, Optional, Any
-from .base import BaseEvaluator, StringSimilarityEvaluator, RegexEvaluator
+from .base import BaseEvaluator, StringSimilarityEvaluator, RegexEvaluator, ContainsEvaluator
 from .llm_judge import LLMJudgeEvaluator
 from .metrics import MetricsEvaluator
 from ..core.config import Config
@@ -35,7 +35,7 @@ class EvaluatorRegistry:
         metrics_config = self._get_evaluator_config("metrics")
         self._evaluators["metrics"] = MetricsEvaluator(metrics_config)
         
-        # Contains evaluator (defined in this file)
+        # Contains evaluator (from base module)
         contains_config = self._get_evaluator_config("contains")
         self._evaluators["contains"] = ContainsEvaluator(contains_config)
         
@@ -185,67 +185,7 @@ class MetricEvaluator(BaseEvaluator):
             )
 
 
-class ContainsEvaluator(BaseEvaluator):
-    """Evaluator for checking if output contains expected strings."""
-    
-    @property 
-    def name(self) -> str:
-        return "contains"
-    
-    def evaluate(self, test_output: Any) -> dict:
-        """Evaluate based on string containment."""
-        try:
-            from .base import EvaluationResult
-            
-            data = self._extract_test_data(test_output)
-            actual = str(data.get("actual", ""))
-            expected_items = data.get("expected", [])
-            
-            if isinstance(expected_items, str):
-                expected_items = [expected_items]
-            
-            if not expected_items:
-                return EvaluationResult(
-                    passed=True,
-                    score=1.0,
-                    details={"reason": "No expected items to check"}
-                )
-            
-            case_sensitive = self._get_config_value("case_sensitive", False)
-            if not case_sensitive:
-                actual = actual.lower()
-                expected_items = [item.lower() for item in expected_items]
-            
-            found_items = []
-            missing_items = []
-            
-            for item in expected_items:
-                if item in actual:
-                    found_items.append(item)
-                else:
-                    missing_items.append(item)
-            
-            score = len(found_items) / len(expected_items)
-            passed = len(missing_items) == 0
-            
-            return EvaluationResult(
-                passed=passed,
-                score=score,
-                details={
-                    "actual": actual,
-                    "expected_items": expected_items,
-                    "found_items": found_items,
-                    "missing_items": missing_items,
-                    "case_sensitive": case_sensitive
-                }
-            )
-            
-        except Exception as e:
-            from .base import EvaluationResult
-            return EvaluationResult(
-                passed=False,
-                error=f"Contains evaluation failed: {str(e)}"
-            )
+# Removed - using ContainsEvaluator from base.py instead
 
 
 # Register additional evaluators in the default registry
@@ -256,9 +196,8 @@ def register_additional_evaluators(registry: EvaluatorRegistry):
     metric_config = registry._get_evaluator_config("metric")
     registry.register_evaluator("metric", MetricEvaluator(metric_config))
     
-    # Contains evaluator  
-    contains_config = registry._get_evaluator_config("contains")
-    registry.register_evaluator("contains", ContainsEvaluator(contains_config))
+    # Contains evaluator (already registered in _register_default_evaluators)
+    # No need to register again
 
 
 # Monkey patch to add additional evaluators

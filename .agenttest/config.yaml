@@ -1,0 +1,35 @@
+version: '1.0'
+project_name: 'AgentTest Project'
+
+llm:
+  provider: 'gemini'
+  model: 'models/gemini-2.0-flash-001'
+  temperature: 0.0
+
+evaluators:
+  - name: 'similarity'
+    type: 'string_similarity'
+    config:
+      method: 'cosine'
+      threshold: 0.8
+    weight: 1.0
+    enabled: true
+
+  - name: 'llm_judge'
+    type: 'llm_as_judge'
+    config:
+      criteria: ['accuracy', 'relevance']
+    weight: 1.0
+    enabled: true
+
+testing:
+  test_dirs: ['tests']
+  test_patterns: ['test_*.py', '*_test.py']
+  parallel: false
+  timeout: 300
+  retry_count: 0
+
+logging:
+  level: 'INFO'
+  git_aware: true
+  results_dir: '.agenttest/results'
