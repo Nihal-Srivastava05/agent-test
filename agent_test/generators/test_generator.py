@@ -206,6 +206,7 @@ class TestGenerator:
                         "is_public": not node.name.startswith('_')
                     }
                     
+                    # Extract methods
                     for item in node.body:
                         if isinstance(item, ast.FunctionDef):
                             method_info = {
@@ -218,14 +219,14 @@ class TestGenerator:
                     
                     info["classes"].append(class_info)
                 
-                elif isinstance(node, (ast.Import, ast.ImportFrom)):
-                    if isinstance(node, ast.Import):
-                        for alias in node.names:
-                            info["imports"].append(alias.name)
-                    else:
-                        module = node.module or ""
-                        for alias in node.names:
-                            info["imports"].append(f"{module}.{alias.name}")
+                elif isinstance(node, ast.Import):
+                    for alias in node.names:
+                        info["imports"].append(alias.name)
+                
+                elif isinstance(node, ast.ImportFrom):
+                    module = node.module or ""
+                    for alias in node.names:
+                        info["imports"].append(f"{module}.{alias.name}")
             
             return info
             
@@ -238,22 +239,26 @@ class TestGenerator:
         count: int
     ) -> List[Dict[str, Any]]:
         """Generate test cases using LLM."""
-        
-        # Create generation prompt
         prompt = self._create_generation_prompt(agent_info, count)
         
-        # Get response from LLM
-        response = self._get_llm_response(prompt)
-        
-        # Parse the response to extract test cases
-        return self._parse_llm_test_cases(response)
+        try:
+            response = self._get_llm_response(prompt)
+            test_cases = self._parse_llm_test_cases(response)
+            
+            if not test_cases:
+                test_cases = self._create_fallback_test_cases()
+            
+            return test_cases[:count]  # Limit to requested count
+            
+        except Exception as e:
+            print(f"Warning: LLM generation failed: {e}")
+            return self._create_fallback_test_cases()
     
     def _create_generation_prompt(self, agent_info: Dict[str, Any], count: int) -> str:
         """Create prompt for LLM test case generation."""
         
         prompt_parts = [
-            "You are an expert test case generator for AI agents. Based on the following agent code,",
-            "generate comprehensive test cases that cover various scenarios including edge cases.",
+            "You are an expert test case generator for AI agents and Python code. Analyze the following code and generate comprehensive test cases.",
             "",
             "AGENT INFORMATION:",
             f"File: {agent_info['file_path']}",
@@ -268,9 +273,19 @@ class TestGenerator:
                 ""
             ])
         
+        # Add source code excerpt for better context
+        source_lines = agent_info["source_code"].split('\n')[:50]  # First 50 lines
+        prompt_parts.extend([
+            "CODE SAMPLE (first 50 lines):",
+            "```python",
+            *source_lines,
+            "```",
+            ""
+        ])
+        
         if agent_info["functions"]:
             prompt_parts.extend([
-                "PUBLIC FUNCTIONS:",
+                "PUBLIC FUNCTIONS TO TEST:",
                 *[f"- {func['name']}({', '.join(func['args'])}): {func['docstring']}" 
                   for func in agent_info["functions"] if func["is_public"]],
                 ""
@@ -278,37 +293,54 @@ class TestGenerator:
         
         if agent_info["classes"]:
             prompt_parts.extend([
-                "CLASSES:",
-                *[f"- {cls['name']}: {cls['docstring']}" 
-                  for cls in agent_info["classes"] if cls["is_public"]],
-                ""
+                "CLASSES TO TEST:",
             ])
+            for cls in agent_info["classes"]:
+                if cls["is_public"]:
+                    prompt_parts.append(f"- {cls['name']}: {cls['docstring']}")
+                    public_methods = [m for m in cls["methods"] if m["is_public"]]
+                    if public_methods:
+                        prompt_parts.extend([
+                            "  Methods:",
+                            *[f"    - {method['name']}({', '.join(method['args'])}): {method['docstring']}" 
+                              for method in public_methods]
+                        ])
+            prompt_parts.append("")
         
         prompt_parts.extend([
-            "FRAMEWORK IMPORTS:",
-            *[f"- {imp}" for imp in agent_info["imports"] 
-              if any(framework in imp.lower() for framework in ["langchain", "llama", "openai", "anthropic"])],
-            "",
-            f"Please generate {count} test cases in the following JSON format:",
+            f"Generate {count} comprehensive test cases in the following EXACT JSON format:",
             "[",
             "  {",
-            '    "name": "test_case_name",',
-            '    "description": "What this test case covers",',
-            '    "input": "test input data",',
-            '    "expected": "expected output (if applicable)",',
-            '    "evaluation_criteria": {"criterion": "description"},',
-            '    "tags": ["tag1", "tag2"]',
+            '    "name": "test_function_name_descriptive",',
+            '    "description": "Clear description of what this test validates",',
+            '    "function_to_test": "actual_function_name_from_code",',
+            '    "input_data": {"key": "value"},',
+            '    "expected_behavior": "What should happen",',
+            '    "evaluation_criteria": {',
+            '      "accuracy": "Response should be accurate and relevant",',
+            '      "format": "Output should be in correct format",',
+            '      "error_handling": "Should handle errors gracefully"',
+            '    },',
+            '    "tags": ["category", "priority"]',
             "  }",
             "]",
             "",
-            "Focus on:",
-            "1. Normal operation cases",
-            "2. Edge cases (empty input, very long input, etc.)",
-            "3. Error handling scenarios",
-            "4. Different input types/formats",
-            "5. Performance considerations",
+            "REQUIREMENTS:",
+            "1. Use ACTUAL function names from the code above",
+            "2. Create realistic input data based on function signatures",
+            "3. Include specific evaluation criteria (3-5 criteria per test)",
+            "4. Cover these scenarios:",
+            "   - Normal operation with typical inputs",
+            "   - Edge cases (empty, null, boundary values)",
+            "   - Error conditions (invalid inputs, exceptions)",
+            "   - Performance considerations (large inputs)",
+            "   - Integration scenarios (if applicable)",
             "",
-            "Test cases:"
+            "5. Make test names descriptive and follow Python naming conventions",
+            "6. Ensure evaluation criteria are specific and measurable",
+            "7. Use appropriate tags: ['basic', 'edge_case', 'error_handling', 'performance', 'integration']",
+            "",
+            "Generate the JSON array now:"
         ])
         
         return "\n".join(prompt_parts)
@@ -335,11 +367,11 @@ class TestGenerator:
         response = self.llm_client.chat.completions.create(
             model=self.model,
             messages=[
-                {"role": "system", "content": "You are an expert test case generator. Generate test cases in valid JSON format."},
+                {"role": "system", "content": "You are an expert test case generator. Generate test cases in valid JSON format exactly as requested. Focus on creating realistic, comprehensive test cases."},
                 {"role": "user", "content": prompt}
             ],
             temperature=self.config.llm.temperature,
-            max_tokens=self.config.llm.max_tokens or 2000
+            max_tokens=self.config.llm.max_tokens or 3000
         )
         
         return response.choices[0].message.content
@@ -348,7 +380,7 @@ class TestGenerator:
         """Get response from Anthropic."""
         response = self.llm_client.messages.create(
             model=self.model,
-            max_tokens=self.config.llm.max_tokens or 2000,
+            max_tokens=self.config.llm.max_tokens or 3000,
             temperature=self.config.llm.temperature,
             messages=[
                 {"role": "user", "content": prompt}
@@ -362,11 +394,11 @@ class TestGenerator:
         # Configure generation parameters
         generation_config = {
             'temperature': self.config.llm.temperature,
-            'max_output_tokens': self.config.llm.max_tokens or 2000,
+            'max_output_tokens': self.config.llm.max_tokens or 3000,
         }
         
         # Add system instruction about being a test case generator
-        full_prompt = "You are an expert test case generator. Generate test cases in valid JSON format. " + prompt
+        full_prompt = "You are an expert test case generator. Generate test cases in valid JSON format exactly as requested. Focus on creating realistic, comprehensive test cases.\n\n" + prompt
         
         response = self.llm_client.generate_content(
             full_prompt,
@@ -388,11 +420,21 @@ class TestGenerator:
                 json_str = json_match.group()
                 test_cases = json.loads(json_str)
                 
-                # Validate test cases
+                # Validate and enhance test cases
                 validated_cases = []
                 for case in test_cases:
                     if isinstance(case, dict) and "name" in case:
-                        validated_cases.append(case)
+                        # Ensure required fields exist
+                        enhanced_case = {
+                            "name": case.get("name", "test_unnamed"),
+                            "description": case.get("description", "Generated test case"),
+                            "function_to_test": case.get("function_to_test", ""),
+                            "input_data": case.get("input_data", case.get("input", {})),
+                            "expected_behavior": case.get("expected_behavior", case.get("expected", "")),
+                            "evaluation_criteria": case.get("evaluation_criteria", {"accuracy": "Should work correctly"}),
+                            "tags": case.get("tags", ["generated"])
+                        }
+                        validated_cases.append(enhanced_case)
                 
                 return validated_cases
             else:
@@ -409,18 +451,28 @@ class TestGenerator:
             {
                 "name": "test_basic_functionality",
                 "description": "Test basic agent functionality",
-                "input": "test input",
-                "expected": None,
-                "evaluation_criteria": {"accuracy": "Response should be accurate"},
-                "tags": ["basic"]
+                "function_to_test": "",
+                "input_data": {"query": "test input"},
+                "expected_behavior": "Should return a valid response",
+                "evaluation_criteria": {
+                    "accuracy": "Response should be accurate",
+                    "format": "Response should be properly formatted",
+                    "completeness": "Response should address the input"
+                },
+                "tags": ["basic", "generated"]
             },
             {
                 "name": "test_empty_input",
                 "description": "Test agent with empty input",
-                "input": "",
-                "expected": None,
-                "evaluation_criteria": {"robustness": "Should handle empty input gracefully"},
-                "tags": ["edge_case"]
+                "function_to_test": "",
+                "input_data": {"query": ""},
+                "expected_behavior": "Should handle empty input gracefully",
+                "evaluation_criteria": {
+                    "robustness": "Should handle empty input gracefully",
+                    "error_handling": "Should not crash on empty input",
+                    "user_experience": "Should provide helpful feedback"
+                },
+                "tags": ["edge_case", "error_handling"]
             }
         ]
     
@@ -432,38 +484,58 @@ class TestGenerator:
             with open(template_path, 'r') as f:
                 template_content = f.read()
         else:
-            # Default template
+            # Enhanced default template
             template_content = '''"""
 Generated test for {{ agent_name }}.
 
 This test was automatically generated by AgentTest.
 """
 
-from agenttest import agent_test
-from {{ agent_module }} import *
+from agent_test import agent_test
+{% if agent_module_path %}
+from {{ agent_module_path }} import *
+{% else %}
+# TODO: Import your agent functions here
+# from your_module import your_function
+{% endif %}
 
 
 {% for test_case in test_cases %}
-@agent_test(criteria={{ test_case.evaluation_criteria.keys() | list }}, tags={{ test_case.tags }})
+@agent_test(
+    criteria=[{% for criterion in test_case.evaluation_criteria.keys() %}"{{ criterion }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+    tags={{ test_case.tags | tojson }}
+)
 def {{ test_case.name }}():
     """{{ test_case.description }}"""
-    input_data = {{ test_case.input | tojson }}
-    {% if test_case.expected %}
-    expected = {{ test_case.expected | tojson }}
-    {% endif %}
+    {% if test_case.input_data -%}
+    input_data = {{ test_case.input_data | tojson }}
+    {%- else -%}
+    input_data = {}
+    {%- endif %}
+    {% if test_case.expected_behavior -%}
+    expected_behavior = {{ test_case.expected_behavior | tojson }}
+    {%- endif %}
     
+    {% if test_case.function_to_test -%}
+    # Call the function being tested
+    {% if test_case.input_data -%}
+    actual = {{ test_case.function_to_test }}(**input_data)
+    {%- else -%}
+    actual = {{ test_case.function_to_test }}()
+    {%- endif %}
+    {%- else -%}
     # TODO: Call your agent function here
     # actual = your_agent_function(input_data)
+    actual = None  # Replace with actual function call
+    {%- endif %}
     
     return {
         "input": input_data,
-        {% if test_case.expected %}
-        "expected": expected,
-        {% endif %}
-        # "actual": actual,
-        {% if test_case.evaluation_criteria %}
+        {% if test_case.expected_behavior -%}
+        "expected_behavior": expected_behavior,
+        {%- endif %}
+        "actual": actual,
         "evaluation_criteria": {{ test_case.evaluation_criteria | tojson }}
-        {% endif %}
     }
 
 {% endfor %}
@@ -471,9 +543,21 @@ def {{ test_case.name }}():
         
         template = Template(template_content)
         
+        # Determine the import path
+        agent_module_path = None
+        file_path = Path(agent_info["file_path"])
+        
+        # Try to construct a reasonable import path
+        if "examples" in str(file_path):
+            parts = file_path.parts
+            if "examples" in parts:
+                idx = parts.index("examples")
+                module_parts = parts[idx:]
+                agent_module_path = ".".join(module_parts).replace(".py", "")
+        
         return template.render(
             agent_name=agent_info["module_name"],
-            agent_module=agent_info["module_name"],
+            agent_module_path=agent_module_path,
             test_cases=test_cases
         )
     

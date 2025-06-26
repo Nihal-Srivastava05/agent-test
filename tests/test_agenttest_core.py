@@ -9,10 +9,10 @@ import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from agenttest.core.config import Config, LLMConfig
-from agenttest.core.decorators import agent_test, TestResults, TestResult
-from agenttest.evaluators.base import StringSimilarityEvaluator, EvaluationResult
-from agenttest.evaluators.registry import EvaluatorRegistry
+from agent_test.core.config import Config, LLMConfig
+from agent_test.core.decorators import agent_test, TestResults, TestResult
+from agent_test.evaluators.base import StringSimilarityEvaluator, EvaluationResult
+from agent_test.evaluators.registry import EvaluatorRegistry
 
 
 class TestConfig:
