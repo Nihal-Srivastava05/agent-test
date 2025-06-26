@@ -89,10 +89,10 @@ pip install agenttest[dev,all]
 
 ## 🔗 Links
 
-- **Repository**: [GitHub](https://github.com/agenttest-ai/agenttest)
-- **Issues**: [Bug Reports & Feature Requests](https://github.com/agenttest-ai/agenttest/issues)
-- **Examples**: [Sample Projects](https://github.com/agenttest-ai/agenttest/tree/main/examples)
+- **Repository**: [GitHub](https://github.com/Nihal-Srivastava05/agent-test)
+- **Issues**: [Bug Reports & Feature Requests](https://github.com/Nihal-Srivastava05/agent-test/issues)
+- **Examples**: [Sample Projects](https://github.com/Nihal-Srivastava05/agent-test/tree/main/examples)
 
 ---
 
-_Need help? Check out our [Quick Start Guide](quickstart.md) or browse the [Examples](examples/basic.md)!_
+\_Need help? Check out our [Quick Start Guide](quickstart.md) or browse the [Examples](examples/basic.md)!

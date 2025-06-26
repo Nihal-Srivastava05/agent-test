@@ -8,8 +8,9 @@ import ast
 import inspect
 import importlib.util
 import sys
+import os
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set, Tuple
 from jinja2 import Template
 
 from ..core.config import Config
@@ -89,7 +90,9 @@ class TestGenerator:
                 api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
             
             if not api_key:
-                raise GenerationError("Google API key not found. Set GOOGLE_API_KEY or GEMINI_API_KEY environment variable")
+                print("Warning: No LLM API key found. Using fallback test generation.")
+                self.llm_client = None
+                return
             
             genai.configure(api_key=api_key)
             self.llm_client = genai.GenerativeModel(self.config.llm.model or 'gemini-pro')
@@ -148,7 +151,7 @@ class TestGenerator:
         # Analyze the agent
         agent_info = self._analyze_agent(agent_path)
         
-        # Generate test cases using LLM
+        # Generate test cases using LLM or fallback
         test_cases = self._generate_test_cases_with_llm(agent_info, count)
         
         # Format the output
@@ -183,7 +186,9 @@ class TestGenerator:
                 "functions": [],
                 "classes": [],
                 "imports": [],
-                "docstring": ast.get_docstring(tree) or ""
+                "docstring": ast.get_docstring(tree) or "",
+                "project_structure": self._analyze_project_structure(file_path),
+                "import_analysis": self._analyze_imports_and_dependencies(file_path, tree)
             }
             
             # Extract functions and classes
@@ -194,7 +199,9 @@ class TestGenerator:
                         "docstring": ast.get_docstring(node) or "",
                         "args": [arg.arg for arg in node.args.args],
                         "returns": getattr(node.returns, 'id', None) if node.returns else None,
-                        "is_public": not node.name.startswith('_')
+                        "is_public": not node.name.startswith('_'),
+                        "is_standalone": True,  # Top-level function
+                        "signature": self._extract_function_signature(node)
                     }
                     info["functions"].append(func_info)
                 
@@ -203,19 +210,26 @@ class TestGenerator:
                         "name": node.name,
                         "docstring": ast.get_docstring(node) or "",
                         "methods": [],
-                        "is_public": not node.name.startswith('_')
+                        "is_public": not node.name.startswith('_'),
+                        "constructor_args": None
                     }
                     
-                    # Extract methods
+                    # Extract methods and constructor
                     for item in node.body:
                         if isinstance(item, ast.FunctionDef):
                             method_info = {
                                 "name": item.name,
                                 "docstring": ast.get_docstring(item) or "",
                                 "args": [arg.arg for arg in item.args.args],
-                                "is_public": not item.name.startswith('_')
+                                "is_public": not item.name.startswith('_'),
+                                "is_constructor": item.name == "__init__",
+                                "signature": self._extract_function_signature(item)
                             }
                             class_info["methods"].append(method_info)
+                            
+                            # Store constructor arguments for object creation
+                            if item.name == "__init__":
+                                class_info["constructor_args"] = [arg.arg for arg in item.args.args if arg.arg != "self"]
                     
                     info["classes"].append(class_info)
                 
@@ -233,26 +247,416 @@ class TestGenerator:
         except Exception as e:
             raise GenerationError(f"Failed to analyze agent: {str(e)}")
     
+    def _analyze_project_structure(self, file_path: Path) -> Dict[str, Any]:
+        """Analyze project structure to understand import paths."""
+        project_root = self._find_project_root(file_path)
+        relative_path = file_path.relative_to(project_root)
+        
+        # Build module path
+        module_parts = list(relative_path.parts[:-1])  # Exclude filename
+        if relative_path.stem != "__init__":
+            module_parts.append(relative_path.stem)
+        
+        module_path = ".".join(module_parts) if module_parts else relative_path.stem
+        
+        return {
+            "project_root": str(project_root),
+            "relative_path": str(relative_path),
+            "module_path": module_path,
+            "package_structure": self._analyze_package_structure(project_root),
+            "is_package": (project_root / "__init__.py").exists()
+        }
+    
+    def _find_project_root(self, file_path: Path) -> Path:
+        """Find the project root directory."""
+        current = file_path.parent
+        
+        # Look for common project indicators
+        project_indicators = [
+            "pyproject.toml", "setup.py", "requirements.txt", 
+            ".git", ".gitignore", "README.md", "README.rst"
+        ]
+        
+        while current != current.parent:
+            if any((current / indicator).exists() for indicator in project_indicators):
+                return current
+            current = current.parent
+        
+        # Fallback to current directory
+        return file_path.parent
+    
+    def _analyze_package_structure(self, project_root: Path) -> Dict[str, Any]:
+        """Analyze package structure for better imports."""
+        packages = []
+        modules = []
+        
+        for py_file in project_root.rglob("*.py"):
+            if py_file.name == "__init__.py":
+                package_path = py_file.parent.relative_to(project_root)
+                if package_path != Path("."):
+                    packages.append(str(package_path).replace(os.sep, "."))
+            else:
+                module_path = py_file.relative_to(project_root)
+                module_name = str(module_path.with_suffix("")).replace(os.sep, ".")
+                modules.append(module_name)
+        
+        return {
+            "packages": packages,
+            "modules": modules
+        }
+    
+    def _analyze_imports_and_dependencies(self, file_path: Path, tree: ast.AST) -> Dict[str, Any]:
+        """Analyze imports to understand what needs to be imported for tests."""
+        imports = {
+            "standard_library": [],
+            "third_party": [],
+            "local": [],
+            "from_imports": {},
+            "required_for_tests": []
+        }
+        
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    import_type = self._classify_import(alias.name)
+                    imports[import_type].append(alias.name)
+            
+            elif isinstance(node, ast.ImportFrom):
+                module = node.module or ""
+                import_type = self._classify_import(module)
+                
+                if module not in imports["from_imports"]:
+                    imports["from_imports"][module] = []
+                
+                for alias in node.names:
+                    imports["from_imports"][module].append(alias.name)
+        
+        # Determine what imports are needed for testing
+        imports["required_for_tests"] = self._determine_test_imports(file_path, imports)
+        
+        return imports
+    
+    def _classify_import(self, module_name: str) -> str:
+        """Classify import as standard library, third party, or local."""
+        if not module_name:
+            return "local"
+        
+        # Standard library modules (partial list)
+        stdlib_modules = {
+            "os", "sys", "json", "re", "datetime", "time", "random", "math",
+            "collections", "itertools", "functools", "pathlib", "typing",
+            "dataclasses", "enum", "abc", "asyncio", "threading", "multiprocessing"
+        }
+        
+        root_module = module_name.split(".")[0]
+        
+        if root_module in stdlib_modules:
+            return "standard_library"
+        elif root_module in ["openai", "anthropic", "google", "langchain", "llama_index"]:
+            return "third_party"
+        else:
+            return "local"
+    
+    def _determine_test_imports(self, file_path: Path, imports: Dict[str, Any]) -> List[str]:
+        """Determine what imports are needed for testing."""
+        required = []
+        
+        # Always need the agent_test decorator
+        required.append("from agent_test import agent_test")
+        
+        # Add imports for the module being tested
+        project_structure = self._analyze_project_structure(file_path)
+        module_path = project_structure["module_path"]
+        
+        if module_path:
+            required.append(f"from {module_path} import *")
+        
+        # Add any third-party dependencies that might be needed
+        for module in imports["third_party"]:
+            if module in ["openai", "anthropic", "google.generativeai"]:
+                required.append(f"import {module}")
+        
+        return required
+    
+    def _extract_function_signature(self, node: ast.FunctionDef) -> Dict[str, Any]:
+        """Extract detailed function signature information."""
+        signature = {
+            "name": node.name,
+            "args": [],
+            "defaults": [],
+            "has_varargs": node.args.vararg is not None,
+            "has_kwargs": node.args.kwarg is not None,
+            "return_annotation": None
+        }
+        
+        # Extract arguments with their types if annotated
+        for i, arg in enumerate(node.args.args):
+            arg_info = {
+                "name": arg.arg,
+                "annotation": getattr(arg.annotation, 'id', None) if arg.annotation else None,
+                "has_default": i >= len(node.args.args) - len(node.args.defaults)
+            }
+            signature["args"].append(arg_info)
+        
+        # Extract default values
+        for default in node.args.defaults:
+            if isinstance(default, ast.Constant):
+                signature["defaults"].append(default.value)
+            else:
+                signature["defaults"].append("...")
+        
+        # Extract return annotation
+        if node.returns:
+            signature["return_annotation"] = getattr(node.returns, 'id', None)
+        
+        return signature
+    
     def _generate_test_cases_with_llm(
         self, 
         agent_info: Dict[str, Any], 
         count: int
     ) -> List[Dict[str, Any]]:
-        """Generate test cases using LLM."""
-        prompt = self._create_generation_prompt(agent_info, count)
+        """Generate test cases using LLM or fallback."""
+        if self.llm_client is None:
+            print("No LLM client available, using enhanced fallback test generation...")
+            return self._create_enhanced_fallback_test_cases(agent_info, count)
         
         try:
+            prompt = self._create_generation_prompt(agent_info, count)
             response = self._get_llm_response(prompt)
             test_cases = self._parse_llm_test_cases(response)
             
             if not test_cases:
-                test_cases = self._create_fallback_test_cases()
+                test_cases = self._create_enhanced_fallback_test_cases(agent_info, count)
             
             return test_cases[:count]  # Limit to requested count
             
         except Exception as e:
             print(f"Warning: LLM generation failed: {e}")
-            return self._create_fallback_test_cases()
+            return self._create_enhanced_fallback_test_cases(agent_info, count)
+    
+    def _create_enhanced_fallback_test_cases(self, agent_info: Dict[str, Any], count: int) -> List[Dict[str, Any]]:
+        """Create enhanced fallback test cases based on code analysis."""
+        test_cases = []
+        
+        # Test standalone functions
+        for func in agent_info["functions"]:
+            if func["is_public"] and func["is_standalone"]:
+                test_cases.extend(self._generate_function_tests(func, agent_info))
+        
+        # Test class methods
+        for cls in agent_info["classes"]:
+            if cls["is_public"]:
+                test_cases.extend(self._generate_class_tests(cls, agent_info))
+        
+        # Ensure we have at least the requested count
+        while len(test_cases) < count:
+            test_cases.append({
+                "name": f"test_general_functionality_{len(test_cases) + 1}",
+                "description": "General functionality test",
+                "function_to_test": "",
+                "input_data": {"input": "test data"},
+                "expected_behavior": "Should work correctly",
+                "evaluation_criteria": {
+                    "functionality": "Should execute without errors",
+                    "output": "Should produce expected output"
+                },
+                "tags": ["general", "fallback"]
+            })
+        
+        return test_cases[:count]
+    
+    def _generate_function_tests(self, func: Dict[str, Any], agent_info: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Generate test cases for a standalone function."""
+        tests = []
+        func_name = func["name"]
+        signature = func["signature"]
+        
+        # Basic functionality test
+        input_data = self._generate_input_data(signature)
+        tests.append({
+            "name": f"test_{func_name}_basic",
+            "description": f"Test basic functionality of {func_name}",
+            "function_to_test": func_name,
+            "input_data": input_data,
+            "expected_behavior": f"Should execute {func_name} successfully",
+            "evaluation_criteria": {
+                "execution": "Function should execute without errors",
+                "output_type": "Should return appropriate type",
+                "functionality": "Should perform expected operation"
+            },
+            "tags": ["basic", "function"]
+        })
+        
+        # Edge case test if function has arguments
+        if signature["args"]:
+            edge_input = self._generate_edge_case_input(signature)
+            tests.append({
+                "name": f"test_{func_name}_edge_case",
+                "description": f"Test edge cases for {func_name}",
+                "function_to_test": func_name,
+                "input_data": edge_input,
+                "expected_behavior": "Should handle edge cases gracefully",
+                "evaluation_criteria": {
+                    "robustness": "Should handle edge cases without crashing",
+                    "error_handling": "Should provide appropriate error handling"
+                },
+                "tags": ["edge_case", "function"]
+            })
+        
+        return tests
+    
+    def _generate_class_tests(self, cls: Dict[str, Any], agent_info: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Generate test cases for a class."""
+        tests = []
+        class_name = cls["name"]
+        
+        # Constructor test
+        if cls["constructor_args"]:
+            constructor_input = self._generate_constructor_input(cls)
+            tests.append({
+                "name": f"test_{class_name.lower()}_creation",
+                "description": f"Test creation of {class_name} object",
+                "function_to_test": class_name,
+                "input_data": constructor_input,
+                "expected_behavior": f"Should create {class_name} instance successfully",
+                "evaluation_criteria": {
+                    "instantiation": "Object should be created successfully",
+                    "attributes": "Object attributes should be set correctly"
+                },
+                "tags": ["basic", "class", "constructor"]
+            })
+        
+        # Method tests
+        for method in cls["methods"]:
+            if method["is_public"] and not method["is_constructor"]:
+                method_input = self._generate_method_input(method, cls)
+                tests.append({
+                    "name": f"test_{class_name.lower()}_{method['name']}",
+                    "description": f"Test {method['name']} method of {class_name}",
+                    "function_to_test": f"{class_name}.{method['name']}",
+                    "input_data": method_input,
+                    "expected_behavior": f"Should execute {method['name']} method successfully",
+                    "evaluation_criteria": {
+                        "method_execution": "Method should execute without errors",
+                        "return_value": "Should return appropriate value"
+                    },
+                    "tags": ["method", "class"]
+                })
+        
+        return tests
+    
+    def _generate_input_data(self, signature: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate realistic input data based on function signature."""
+        input_data = {}
+        
+        for i, arg in enumerate(signature["args"]):
+            if arg["name"] == "self":
+                continue
+                
+            # Generate data based on argument name and type hints
+            arg_name = arg["name"]
+            annotation = arg["annotation"]
+            
+            if "query" in arg_name.lower():
+                input_data[arg_name] = "test query"
+            elif "text" in arg_name.lower():
+                input_data[arg_name] = "test text"
+            elif "message" in arg_name.lower():
+                input_data[arg_name] = "test message"
+            elif "data" in arg_name.lower():
+                input_data[arg_name] = {"key": "value"}
+            elif "id" in arg_name.lower():
+                input_data[arg_name] = "test_id"
+            elif "name" in arg_name.lower():
+                input_data[arg_name] = "test_name"
+            elif "type" in arg_name.lower():
+                input_data[arg_name] = "test_type"
+            elif "count" in arg_name.lower() or "num" in arg_name.lower():
+                input_data[arg_name] = 5
+            elif annotation == "bool":
+                input_data[arg_name] = True
+            elif annotation == "int":
+                input_data[arg_name] = 42
+            elif annotation == "float":
+                input_data[arg_name] = 3.14
+            elif annotation == "list":
+                input_data[arg_name] = ["item1", "item2"]
+            elif annotation == "dict":
+                input_data[arg_name] = {"key": "value"}
+            else:
+                # Default to string
+                input_data[arg_name] = f"test_{arg_name}"
+        
+        return input_data
+    
+    def _generate_edge_case_input(self, signature: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate edge case input data."""
+        input_data = {}
+        
+        for arg in signature["args"]:
+            if arg["name"] == "self":
+                continue
+                
+            arg_name = arg["name"]
+            annotation = arg["annotation"]
+            
+            # Generate edge case values
+            if "query" in arg_name.lower() or "text" in arg_name.lower():
+                input_data[arg_name] = ""  # Empty string
+            elif annotation == "int":
+                input_data[arg_name] = 0
+            elif annotation == "list":
+                input_data[arg_name] = []
+            elif annotation == "dict":
+                input_data[arg_name] = {}
+            else:
+                input_data[arg_name] = f"test_{arg_name}"
+        
+        return input_data
+    
+    def _generate_constructor_input(self, cls: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate input data for class constructor."""
+        input_data = {}
+        
+        for arg_name in cls["constructor_args"]:
+            if "api_key" in arg_name.lower():
+                input_data[arg_name] = "test_api_key"
+            elif "url" in arg_name.lower():
+                input_data[arg_name] = "https://test.example.com"
+            elif "config" in arg_name.lower():
+                input_data[arg_name] = {"setting": "value"}
+            elif "model" in arg_name.lower():
+                input_data[arg_name] = "test_model"
+            else:
+                input_data[arg_name] = f"test_{arg_name}"
+        
+        return input_data
+    
+    def _generate_method_input(self, method: Dict[str, Any], cls: Dict[str, Any]) -> Dict[str, Any]:
+        """Generate input data for class method."""
+        input_data = {}
+        
+        # Add class instance creation info
+        if cls["constructor_args"]:
+            input_data["_class_instance"] = {
+                "class_name": cls["name"],
+                "constructor_args": self._generate_constructor_input(cls)
+            }
+        
+        # Add method arguments
+        for arg_name in method["args"]:
+            if arg_name in ["self"]:
+                continue
+            
+            if "query" in arg_name.lower():
+                input_data[arg_name] = "test query for method"
+            elif "data" in arg_name.lower():
+                input_data[arg_name] = {"method_data": "value"}
+            else:
+                input_data[arg_name] = f"test_{arg_name}"
+        
+        return input_data
     
     def _create_generation_prompt(self, agent_info: Dict[str, Any], count: int) -> str:
         """Create prompt for LLM test case generation."""
@@ -263,6 +667,7 @@ class TestGenerator:
             "AGENT INFORMATION:",
             f"File: {agent_info['file_path']}",
             f"Module: {agent_info['module_name']}",
+            f"Module Path: {agent_info['project_structure']['module_path']}",
             ""
         ]
         
@@ -518,10 +923,25 @@ def {{ test_case.name }}():
     
     {% if test_case.function_to_test -%}
     # Call the function being tested
+    {% if "." in test_case.function_to_test -%}
+    # Class method call
+    {% set class_method = test_case.function_to_test.split(".") -%}
+    {% if test_case.input_data.get("_class_instance") -%}
+    instance = {{ class_method[0] }}(**{{ test_case.input_data._class_instance.constructor_args | tojson }})
+    actual = instance.{{ class_method[1] }}({% for key, value in test_case.input_data.items() if key != "_class_instance" %}{{ key }}={{ value | tojson }}{% if not loop.last %}, {% endif %}{% endfor %})
+    {%- else -%}
+    # TODO: Create instance of {{ class_method[0] }} with appropriate arguments
+    # instance = {{ class_method[0] }}(api_key="your_api_key")
+    # actual = instance.{{ class_method[1] }}(**input_data)
+    actual = None
+    {%- endif %}
+    {%- else -%}
+    # Function call
     {% if test_case.input_data -%}
     actual = {{ test_case.function_to_test }}(**input_data)
     {%- else -%}
     actual = {{ test_case.function_to_test }}()
+    {%- endif %}
     {%- endif %}
     {%- else -%}
     # TODO: Call your agent function here
@@ -543,17 +963,9 @@ def {{ test_case.name }}():
         
         template = Template(template_content)
         
-        # Determine the import path
-        agent_module_path = None
-        file_path = Path(agent_info["file_path"])
-        
-        # Try to construct a reasonable import path
-        if "examples" in str(file_path):
-            parts = file_path.parts
-            if "examples" in parts:
-                idx = parts.index("examples")
-                module_parts = parts[idx:]
-                agent_module_path = ".".join(module_parts).replace(".py", "")
+        # Use the analyzed project structure for imports
+        project_structure = agent_info.get("project_structure", {})
+        agent_module_path = project_structure.get("module_path", None)
         
         return template.render(
             agent_name=agent_info["module_name"],
