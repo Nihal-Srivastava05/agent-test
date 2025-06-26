@@ -374,5 +374,5 @@ Each evaluator returns structured results:
 
 - [Configuration](configuration.md) - Evaluator configuration details
 - [Writing Tests](writing-tests.md) - Test structure and patterns
-- [Custom Evaluators](evaluators/custom.md) - Building your own evaluators
+- Custom Evaluators - Building your own evaluators (coming soon)
 - [CLI Commands](cli-commands.md) - Running tests with specific evaluators

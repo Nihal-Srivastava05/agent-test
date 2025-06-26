@@ -545,4 +545,4 @@ logging:
 - [CLI Commands](cli-commands.md) - Detailed command reference
 - [Configuration](configuration.md) - Git integration configuration
 - [Writing Tests](writing-tests.md) - Test structure for tracking
-- [Logging](logging.md) - Enhanced logging features
+- Enhanced logging features (built-in)

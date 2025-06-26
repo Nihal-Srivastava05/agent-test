@@ -392,6 +392,55 @@ agenttest generate --agent agents/my_agent.py --format yaml
 agenttest generate --agent agents/my_agent.py --format json
 ```
 
+## 📚 Documentation
+
+AgentTest includes comprehensive documentation built with MkDocs and hosted on GitHub Pages.
+
+### 🌐 Online Documentation
+
+Visit the full documentation at: **https://your-username.github.io/your-repo-name/**
+
+### 🏠 Local Documentation
+
+You can also run the documentation locally:
+
+```bash
+# Install documentation dependencies
+pip install -e ".[docs]"
+
+# Serve documentation locally
+mkdocs serve
+# Or use the helper script
+./scripts/docs.sh serve
+```
+
+The documentation includes:
+
+- **Installation & Setup**: Complete installation guide
+- **Quick Start**: Get started in 5 minutes
+- **User Guide**: Configuration, writing tests, CLI commands
+- **Evaluators**: Detailed guide for all evaluation methods
+- **Examples**: Practical examples and tutorials
+- **API Reference**: Complete API documentation
+- **Git Integration**: Advanced git-aware features
+
+### 📝 Documentation Development
+
+To contribute to documentation:
+
+```bash
+# Build documentation
+./scripts/docs.sh build
+
+# Build with strict mode (fail on warnings)
+./scripts/docs.sh build-strict
+
+# Deploy to GitHub Pages
+./scripts/docs.sh deploy
+```
+
+See [README_DOCS.md](README_DOCS.md) for detailed documentation setup instructions.
+
 ## 📚 API Reference
 
 ### Core Functions

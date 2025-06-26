@@ -4,7 +4,7 @@ This guide provides practical examples to help you get started with AgentTest. E
 
 ## 🚀 Getting Started Examples
 
-### Example 1: Simple Q&A Agent
+### Example 1: Simple Q&A Agent {#similarity-evaluator-examples}
 
 Test a basic question-answering agent with similarity evaluation.
 
@@ -81,7 +81,7 @@ def test_recipe_ingredients():
     }
 ```
 
-### Example 3: Pattern Matching with Regex
+### Example 3: Pattern Matching with Regex {#pattern-matching-examples}
 
 Validate structured outputs using regular expressions.
 

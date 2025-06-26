@@ -16,12 +16,10 @@ AgentTest is a comprehensive testing framework designed specifically for AI agen
 
 - [Writing Tests](writing-tests.md) - How to structure and write agent tests
 - [Evaluators](evaluators.md) - Understanding evaluation metrics and criteria
-- [Test Execution](test-execution.md) - Running tests and interpreting results
 
 ### Advanced Features
 
 - [Git Integration](git-integration.md) - Version tracking and comparison features
-- [Logging & Debugging](logging.md) - Enhanced logging and debugging capabilities
 - [CLI Commands](cli-commands.md) - Complete command-line interface reference
 
 ### Evaluator Reference
@@ -30,19 +28,14 @@ AgentTest is a comprehensive testing framework designed specifically for AI agen
 - [LLM Judge](evaluators/llm-judge.md) - AI-powered evaluation
 - [NLP Metrics](evaluators/metrics.md) - ROUGE, BLEU, METEOR metrics
 - [Pattern Matching](evaluators/patterns.md) - Regex and contains evaluators
-- [Custom Evaluators](evaluators/custom.md) - Building your own evaluators
 
 ### Examples & Tutorials
 
 - [Basic Examples](examples/basic.md) - Simple test cases
-- [Advanced Scenarios](examples/advanced.md) - Complex evaluation patterns
-- [Best Practices](examples/best-practices.md) - Testing strategies and patterns
 
 ### API Reference
 
 - [Core API](api/core.md) - Core classes and functions
-- [Decorators](api/decorators.md) - Test decoration and configuration
-- [Results](api/results.md) - Test results and reporting
 
 ## 🚀 Key Features
 

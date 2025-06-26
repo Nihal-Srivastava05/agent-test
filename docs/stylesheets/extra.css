@@ -1,0 +1,162 @@
+/* Custom styles for AgentTest documentation */
+
+/* Logo and branding */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* Code blocks */
+.highlight .hll {
+  background-color: #ffffcc;
+}
+
+/* Admonitions */
+.md-typeset .admonition.tip {
+  border-color: #00e676;
+}
+
+.md-typeset .admonition.tip > .admonition-title {
+  background-color: rgba(0, 230, 118, 0.1);
+  border-color: #00e676;
+}
+
+/* Custom colors for different evaluator types */
+.evaluator-similarity {
+  border-left: 4px solid #2196f3;
+  padding-left: 1rem;
+  background-color: rgba(33, 150, 243, 0.05);
+}
+
+.evaluator-llm-judge {
+  border-left: 4px solid #ff9800;
+  padding-left: 1rem;
+  background-color: rgba(255, 152, 0, 0.05);
+}
+
+.evaluator-metrics {
+  border-left: 4px solid #4caf50;
+  padding-left: 1rem;
+  background-color: rgba(76, 175, 80, 0.05);
+}
+
+.evaluator-patterns {
+  border-left: 4px solid #9c27b0;
+  padding-left: 1rem;
+  background-color: rgba(156, 39, 176, 0.05);
+}
+
+/* API reference styling */
+.api-method {
+  background-color: var(--md-code-bg-color);
+  border-radius: 0.2rem;
+  padding: 0.2rem 0.4rem;
+  font-family: var(--md-code-font);
+  font-size: 0.85em;
+}
+
+.api-parameter {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 0.2rem;
+  padding: 0.1rem 0.3rem;
+  font-family: var(--md-code-font);
+  font-size: 0.8em;
+}
+
+/* Dark mode adjustments */
+[data-md-color-scheme='slate'] .api-parameter {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-md-color-scheme='slate'] .evaluator-similarity,
+[data-md-color-scheme='slate'] .evaluator-llm-judge,
+[data-md-color-scheme='slate'] .evaluator-metrics,
+[data-md-color-scheme='slate'] .evaluator-patterns {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Table improvements */
+.md-typeset table:not([class]) th {
+  min-width: 6rem;
+}
+
+/* Command line styling */
+.cli-command {
+  background-color: var(--md-code-bg-color);
+  border-left: 4px solid var(--md-primary-fg-color);
+  padding: 1rem;
+  border-radius: 0.2rem;
+  margin: 1rem 0;
+}
+
+/* Feature callouts */
+.feature-highlight {
+  border: 2px solid var(--md-primary-fg-color);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  margin: 1rem 0;
+  background-color: rgba(var(--md-primary-fg-color--rgb), 0.05);
+}
+
+/* Version badges */
+.version-badge {
+  display: inline-block;
+  background-color: var(--md-primary-fg-color);
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 1rem;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-left: 0.5rem;
+}
+
+/* Example code blocks */
+.example-block {
+  border: 1px solid rgba(var(--md-primary-fg-color--rgb), 0.2);
+  border-radius: 0.3rem;
+  margin: 1rem 0;
+}
+
+.example-block .example-title {
+  background-color: rgba(var(--md-primary-fg-color--rgb), 0.1);
+  padding: 0.5rem 1rem;
+  font-weight: bold;
+  border-bottom: 1px solid rgba(var(--md-primary-fg-color--rgb), 0.2);
+}
+
+.example-block .example-content {
+  padding: 1rem;
+}
+
+/* Navigation improvements */
+.md-nav__item .md-nav__link--active {
+  font-weight: bold;
+}
+
+/* Footer customization */
+.md-footer__inner {
+  padding: 1rem 0;
+}
+
+/* Mobile responsiveness */
+@media screen and (max-width: 76.1875em) {
+  .md-nav--primary .md-nav__title {
+    background-color: var(--md-primary-fg-color);
+  }
+}
+
+/* Print styles */
+@media print {
+  .md-header,
+  .md-footer,
+  .md-nav,
+  .md-sidebar {
+    display: none !important;
+  }
+
+  .md-content {
+    margin: 0 !important;
+  }
+}
