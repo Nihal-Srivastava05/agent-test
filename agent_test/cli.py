@@ -16,6 +16,7 @@ from .core.config import Config
 from .core.init import initialize_project
 from .core.runner import TestRunner
 from .core.git_logger import GitLogger
+from .core.logging import setup_logger, get_logger
 from .generators.test_generator import TestGenerator
 from .utils.exceptions import AgentTestError
 
@@ -84,7 +85,13 @@ def run(
         False, 
         "--verbose", 
         "-v", 
-        help="Verbose output"
+        help="Verbose output with detailed logging"
+    ),
+    quiet: bool = typer.Option(
+        False,
+        "--quiet",
+        "-q", 
+        help="Suppress non-essential output"
     ),
     ci: bool = typer.Option(
         False, 
@@ -97,6 +104,11 @@ def run(
         "-o", 
         help="Output file for results"
     ),
+    log_output: Optional[Path] = typer.Option(
+        None,
+        "--log-output",
+        help="Export detailed logs to file"
+    ),
     tags: Optional[List[str]] = typer.Option(
         None, 
         "--tag", 
@@ -106,10 +118,14 @@ def run(
 ) -> None:
     """Run agent tests."""
     try:
+        # Setup logging first
+        logger = setup_logger(verbose=verbose, quiet=quiet)
+        
         config = Config.load()
         runner = TestRunner(config)
         
-        console.print("[bold blue]🧪 Running AgentTest suite...[/bold blue]")
+        if not quiet:
+            console.print("[bold blue]🧪 Running AgentTest suite...[/bold blue]")
         
         # Discover and run tests
         results = runner.run_tests(
@@ -119,8 +135,15 @@ def run(
             verbose=verbose
         )
         
-        # Display results
-        _display_results(results)
+        # Display results (enhanced with detailed failure info)
+        if not quiet:
+            _display_results(results)
+        
+        # Export logs if requested
+        if log_output:
+            logger.export_logs(str(log_output))
+            if not quiet:
+                console.print(f"📄 Detailed logs saved to: {log_output}")
         
         # Log to git-aware logger
         git_logger = GitLogger(config)
@@ -128,15 +151,18 @@ def run(
         
         # Save output if specified
         if output:
-            results.save_to_file(output)
-            console.print(f"📄 Results saved to: {output}")
+            results.save_to_file(str(output))
+            if not quiet:
+                console.print(f"📄 Results saved to: {output}")
         
         # Exit with error code in CI mode if there are failures
         if ci and results.has_failures():
-            console.print("[bold red]❌ Tests failed - exiting with error code[/bold red]")
+            if not quiet:
+                console.print("[bold red]❌ Tests failed - exiting with error code[/bold red]")
             raise typer.Exit(1)
             
-        console.print("[bold green]✅ Test run completed![/bold green]")
+        if not quiet:
+            console.print("[bold green]✅ Test run completed![/bold green]")
         
     except AgentTestError as e:
         console.print(f"[bold red]Error: {e}[/bold red]")
@@ -307,12 +333,14 @@ def dashboard(
 
 
 def _display_results(results) -> None:
-    """Display test results in a formatted table."""
+    """Display test results in a formatted table with detailed error information."""
     table = Table(title="Test Results")
     table.add_column("Test", style="cyan")
     table.add_column("Status", style="bold")
     table.add_column("Score", style="magenta")
     table.add_column("Duration", style="green")
+    
+    failed_tests = []
     
     for result in results.test_results:
         status = "✅ PASS" if result.passed else "❌ FAIL"
@@ -320,16 +348,84 @@ def _display_results(results) -> None:
         duration = f"{result.duration:.2f}s"
         
         table.add_row(result.test_name, status, score, duration)
+        
+        # Collect failed tests for detailed reporting
+        if not result.passed:
+            failed_tests.append(result)
     
     console.print(table)
+    
+    # Display detailed failure information
+    if failed_tests:
+        console.print("\n[bold red]💥 FAILURE DETAILS[/bold red]")
+        console.print("=" * 60)
+        
+        for i, result in enumerate(failed_tests, 1):
+            console.print(f"\n[bold red]{i}. {result.test_name}[/bold red]")
+            console.print("─" * 40)
+            
+            # Display error message if present
+            if result.error:
+                console.print(f"[red]❌ Error:[/red] {result.error}")
+            
+            # Display evaluation details
+            if result.evaluations:
+                console.print("[yellow]📊 Evaluation Results:[/yellow]")
+                for evaluator_name, evaluation in result.evaluations.items():
+                    if isinstance(evaluation, dict):
+                        if evaluation.get('error'):
+                            console.print(f"  • [red]{evaluator_name}:[/red] {evaluation['error']}")
+                        else:
+                            console.print(f"  • [cyan]{evaluator_name}:[/cyan]")
+                            if 'score' in evaluation and evaluation['score'] is not None:
+                                console.print(f"    Score: {evaluation['score']:.3f}")
+                            if 'threshold' in evaluation and evaluation['threshold'] is not None:
+                                console.print(f"    Threshold: {evaluation['threshold']}")
+                            if 'passed' in evaluation:
+                                console.print(f"    Passed: {'✅' if evaluation['passed'] else '❌'}")
+                            
+                            # Display specific failure reasons
+                            if 'details' in evaluation and evaluation['details']:
+                                details = evaluation['details']
+                                if 'reason' in details:
+                                    console.print(f"    Reason: {details['reason']}")
+                                if 'actual' in details and 'expected' in details:
+                                    console.print(f"    Expected: [green]{details['expected']}[/green]")
+                                    console.print(f"    Actual:   [red]{details['actual']}[/red]")
+                                if 'similarity' in details:
+                                    console.print(f"    Similarity: {details['similarity']:.3f}")
+                                if 'pattern' in details:
+                                    console.print(f"    Pattern: {details['pattern']}")
+                                if 'matches' in details:
+                                    console.print(f"    Matches: {details['matches']}")
+            
+            # Display additional test details
+            if result.details:
+                console.print("[yellow]🔍 Test Details:[/yellow]")
+                for key, value in result.details.items():
+                    if key not in ['evaluations']:  # Skip redundant info
+                        if isinstance(value, (str, int, float, bool)):
+                            console.print(f"  • {key}: {value}")
+                        elif isinstance(value, dict):
+                            console.print(f"  • {key}:")
+                            for sub_key, sub_value in value.items():
+                                console.print(f"    - {sub_key}: {sub_value}")
     
     # Summary
     total = len(results.test_results)
     passed = sum(1 for r in results.test_results if r.passed)
     failed = total - passed
     
+    summary_text = f"Total: {total} | Passed: {passed} | Failed: {failed}"
+    if failed > 0:
+        summary_text += f"\n\n[bold red]💡 Tip:[/bold red] Check the failure details above for specific issues."
+        summary_text += f"\n[bold blue]🔧 Common fixes:[/bold blue]"
+        summary_text += f"\n  • Verify API keys are set (GOOGLE_API_KEY, OPENAI_API_KEY)"
+        summary_text += f"\n  • Check test input/expected output formats"
+        summary_text += f"\n  • Review evaluation criteria and thresholds"
+    
     summary = Panel(
-        f"Total: {total} | Passed: {passed} | Failed: {failed}",
+        summary_text,
         title="Summary",
         title_align="left"
     )

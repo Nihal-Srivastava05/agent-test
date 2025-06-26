@@ -1,0 +1,57 @@
+{
+  "runs": [
+    {
+      "timestamp": "2025-06-26T11:38:32.124070",
+      "commit_hash": "b7c9d02893af0bdeeaa663038fda176c4085a98f",
+      "commit_hash_short": "b7c9d028",
+      "branch": "main",
+      "summary": {
+        "total_tests": 0,
+        "passed": 0,
+        "failed": 0,
+        "pass_rate": 0.0,
+        "average_score": null,
+        "total_duration": 0
+      },
+      "filename": "20250626_113832_b7c9d028.json"
+    }
+  ],
+  "by_commit": {
+    "b7c9d02893af0bdeeaa663038fda176c4085a98f": [
+      {
+        "timestamp": "2025-06-26T11:38:32.124070",
+        "commit_hash": "b7c9d02893af0bdeeaa663038fda176c4085a98f",
+        "commit_hash_short": "b7c9d028",
+        "branch": "main",
+        "summary": {
+          "total_tests": 0,
+          "passed": 0,
+          "failed": 0,
+          "pass_rate": 0.0,
+          "average_score": null,
+          "total_duration": 0
+        },
+        "filename": "20250626_113832_b7c9d028.json"
+      }
+    ]
+  },
+  "by_branch": {
+    "main": [
+      {
+        "timestamp": "2025-06-26T11:38:32.124070",
+        "commit_hash": "b7c9d02893af0bdeeaa663038fda176c4085a98f",
+        "commit_hash_short": "b7c9d028",
+        "branch": "main",
+        "summary": {
+          "total_tests": 0,
+          "passed": 0,
+          "failed": 0,
+          "pass_rate": 0.0,
+          "average_score": null,
+          "total_duration": 0
+        },
+        "filename": "20250626_113832_b7c9d028.json"
+      }
+    ]
+  }
+}

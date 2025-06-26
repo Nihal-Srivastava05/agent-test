@@ -1,0 +1,52 @@
+{
+  "timestamp": "2025-06-26T11:38:32.124070",
+  "git_info": {
+    "commit_hash": "b7c9d02893af0bdeeaa663038fda176c4085a98f",
+    "commit_hash_short": "b7c9d028",
+    "branch": "main",
+    "commit_message": "feat: add examples and tests for them",
+    "author": "Nihal Srivastava",
+    "commit_date": "2025-06-26T11:30:00+05:30",
+    "changed_files": [
+      "agent_test/__pycache__/cli.cpython-312.pyc",
+      "agent_test/cli.py",
+      "agent_test/core/__pycache__/runner.cpython-312.pyc",
+      "agent_test/core/runner.py"
+    ],
+    "untracked_files": [
+      "agent_test/core/__pycache__/logging.cpython-312.pyc",
+      "agent_test/core/logging.py"
+    ],
+    "is_dirty": true,
+    "recent_commits": [
+      {
+        "hash": "b7c9d028",
+        "message": "feat: add examples and tests for them",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T11:30:00+05:30"
+      },
+      {
+        "hash": "e720df39",
+        "message": "refactor app",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-26T10:53:00+05:30"
+      },
+      {
+        "hash": "cd2337c5",
+        "message": "feat: Initial MVP code",
+        "author": "Nihal Srivastava",
+        "date": "2025-06-24T19:52:12+05:30"
+      }
+    ]
+  },
+  "summary": {
+    "total_tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "pass_rate": 0.0,
+    "average_score": null,
+    "total_duration": 0
+  },
+  "test_results": [],
+  "metadata": {}
+}

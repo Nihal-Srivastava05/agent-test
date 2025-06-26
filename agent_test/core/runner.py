@@ -14,6 +14,7 @@ from typing import List, Dict, Any, Optional, Union
 
 from .config import Config
 from .decorators import TestCase, TestResult, TestResults, get_registered_tests, is_agent_test
+from .logging import get_logger, setup_logger
 from ..evaluators.registry import EvaluatorRegistry
 from ..utils.exceptions import TestDiscoveryError, TestExecutionError
 
@@ -24,6 +25,7 @@ class TestRunner:
     def __init__(self, config: Config):
         self.config = config
         self.evaluator_registry = EvaluatorRegistry(config)
+        self.logger = get_logger()
     
     def run_tests(
         self,
@@ -44,25 +46,51 @@ class TestRunner:
         Returns:
             TestResults object containing all results
         """
+        # Setup logger for this run
+        self.logger = setup_logger(verbose=verbose, quiet=False)
+        
+        # Log session start
+        self.logger.session_started({
+            "pattern": pattern,
+            "tags": tags,
+            "path": str(path) if path else None
+        })
+        
         # Discover tests
+        if path:
+            self.logger.discovery_started(str(path), pattern)
+        else:
+            self.logger.discovery_started("test directories", pattern)
+            
         test_cases = self.discover_tests(path, pattern)
         
         # Filter by tags if specified
         if tags:
             test_cases = [tc for tc in test_cases if any(tag in tc.tags for tag in tags)]
         
+        self.logger.discovery_completed(len(test_cases), len(test_cases))
+        
         if not test_cases:
+            self.logger.warning("DISCOVERY", "No tests found matching criteria")
             return TestResults()
         
         results = TestResults()
         
         # Execute tests
-        for test_case in test_cases:
-            if verbose:
-                print(f"Running {test_case.name}...")
+        for i, test_case in enumerate(test_cases):
+            self.logger.test_started(test_case.name, len(test_cases))
             
             result = self.execute_test(test_case, verbose)
             results.add_result(result)
+            
+            # Log test completion
+            self.logger.test_completed(
+                test_case.name,
+                result.passed,
+                result.duration,
+                result.score,
+                result.error
+            )
         
         # Add metadata
         results.metadata = {
@@ -72,6 +100,9 @@ class TestRunner:
             "tags": tags,
             "verbose": verbose
         }
+        
+        # Log session completion
+        self.logger.session_completed(results.get_summary())
         
         return results
     
@@ -179,11 +210,17 @@ class TestRunner:
         start_time = time.time()
         
         try:
+            if verbose:
+                print(f"  📝 Executing test function: {test_case.name}")
+            
             # Execute the test function
             test_output = test_case.function()
             
+            if verbose:
+                print(f"  📊 Evaluating with criteria: {test_case.criteria}")
+            
             # Evaluate the results
-            evaluations = self._evaluate_test_output(test_output, test_case.criteria)
+            evaluations = self._evaluate_test_output(test_output, test_case.criteria, verbose)
             
             # Determine if test passed
             passed = self._determine_pass_status(evaluations)
@@ -193,51 +230,121 @@ class TestRunner:
             
             duration = time.time() - start_time
             
-            return TestResult(
+            # Create detailed test result
+            result = TestResult(
                 test_name=test_case.name,
                 passed=passed,
                 score=score,
                 duration=duration,
-                details={"output": test_output},
-                evaluations=evaluations
+                evaluations=evaluations,
+                details={
+                    "test_output": test_output,
+                    "criteria": test_case.criteria,
+                    "tags": test_case.tags,
+                    "file_path": test_case.file_path,
+                    "timeout": test_case.timeout
+                }
             )
+            
+            if verbose:
+                status = "✅ PASSED" if passed else "❌ FAILED"
+                print(f"  {status} - Score: {score}, Duration: {duration:.3f}s")
+                if not passed:
+                    print(f"  💥 Failure reason: {self._get_failure_summary(evaluations)}")
+            
+            return result
             
         except Exception as e:
             duration = time.time() - start_time
-            error_msg = f"{type(e).__name__}: {str(e)}"
+            error_message = f"Test execution failed: {str(e)}"
             
             if verbose:
-                error_msg += f"\n{traceback.format_exc()}"
+                print(f"  ❌ EXCEPTION: {error_message}")
+                print(f"  📍 Traceback:")
+                traceback.print_exc()
             
             return TestResult(
                 test_name=test_case.name,
                 passed=False,
+                score=None,
                 duration=duration,
-                error=error_msg
+                error=error_message,
+                evaluations={},
+                details={
+                    "exception_type": type(e).__name__,
+                    "traceback": traceback.format_exc(),
+                    "criteria": test_case.criteria,
+                    "tags": test_case.tags,
+                    "file_path": test_case.file_path
+                }
             )
+    
+    def _get_failure_summary(self, evaluations: Dict[str, Any]) -> str:
+        """Get a brief summary of why the test failed."""
+        failure_reasons = []
+        
+        for criterion, result in evaluations.items():
+            if isinstance(result, dict):
+                if result.get("error"):
+                    failure_reasons.append(f"{criterion}: {result['error']}")
+                elif not result.get("passed", True):
+                    if "details" in result and "reason" in result["details"]:
+                        failure_reasons.append(f"{criterion}: {result['details']['reason']}")
+                    elif "score" in result and "threshold" in result:
+                        failure_reasons.append(
+                            f"{criterion}: Score {result['score']:.3f} below threshold {result['threshold']}"
+                        )
+                    else:
+                        failure_reasons.append(f"{criterion}: Failed evaluation")
+        
+        return "; ".join(failure_reasons) if failure_reasons else "Unknown failure reason"
     
     def _evaluate_test_output(
         self, 
         test_output: Any, 
-        criteria: List[str]
+        criteria: List[str],
+        verbose: bool = False
     ) -> Dict[str, Any]:
         """Evaluate test output using specified criteria."""
         evaluations = {}
         
         for criterion in criteria:
             try:
+                if verbose:
+                    print(f"    🔍 Running {criterion} evaluator...")
+                
                 evaluator = self.evaluator_registry.get_evaluator(criterion)
                 if evaluator:
                     evaluation_result = evaluator.evaluate(test_output)
-                    evaluations[criterion] = evaluation_result
+                    
+                    # Convert EvaluationResult to dict if needed
+                    if hasattr(evaluation_result, 'to_dict'):
+                        evaluations[criterion] = evaluation_result.to_dict()
+                    else:
+                        evaluations[criterion] = evaluation_result
+                    
+                    if verbose:
+                        result_dict = evaluations[criterion]
+                        if result_dict.get("passed"):
+                            print(f"    ✅ {criterion}: PASSED")
+                        else:
+                            print(f"    ❌ {criterion}: FAILED")
+                            if result_dict.get("error"):
+                                print(f"       Error: {result_dict['error']}")
+                            elif "score" in result_dict and "threshold" in result_dict:
+                                print(f"       Score: {result_dict['score']:.3f}, Threshold: {result_dict['threshold']}")
                 else:
-                    evaluations[criterion] = {
-                        "error": f"Evaluator '{criterion}' not found"
-                    }
+                    error_msg = f"Evaluator '{criterion}' not found"
+                    evaluations[criterion] = {"error": error_msg}
+                    if verbose:
+                        print(f"    ❌ {criterion}: {error_msg}")
+                        
             except Exception as e:
-                evaluations[criterion] = {
-                    "error": f"Evaluation failed: {str(e)}"
-                }
+                error_msg = f"Evaluation failed: {str(e)}"
+                evaluations[criterion] = {"error": error_msg}
+                if verbose:
+                    print(f"    ❌ {criterion}: {error_msg}")
+                    traceback.print_exc()
         
         return evaluations
     
@@ -249,10 +356,10 @@ class TestRunner:
                     return False
                 if "passed" in result and not result["passed"]:
                     return False
-                if "score" in result:
+                if "score" in result and result["score"] is not None:
                     # Use threshold from evaluator config or default 0.8
                     threshold = result.get("threshold", 0.8)
-                    if result["score"] < threshold:
+                    if threshold is not None and result["score"] < threshold:
                         return False
         
         return True
@@ -264,11 +371,13 @@ class TestRunner:
         
         for criterion, result in evaluations.items():
             if isinstance(result, dict) and "score" in result and not result.get("error"):
-                scores.append(result["score"])
-                # Get weight from evaluator config
-                evaluator_config = self.config.get_evaluator(criterion)
-                weight = evaluator_config.weight if evaluator_config else 1.0
-                weights.append(weight)
+                score = result["score"]
+                if score is not None:  # Only include non-None scores
+                    scores.append(score)
+                    # Get weight from evaluator config
+                    evaluator_config = self.config.get_evaluator(criterion)
+                    weight = evaluator_config.weight if evaluator_config else 1.0
+                    weights.append(weight)
         
         if not scores:
             return None
