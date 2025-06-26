@@ -4,6 +4,7 @@ This comprehensive guide walks you through using AgentTest to test AI agents and
 
 ## 📋 Table of Contents
 
+- [🎯 Complete End-User Flow](#-complete-end-user-flow)
 - [🚀 Quick Start](#-quick-start)
 - [🤖 Sample AI Agent Project](#-sample-ai-agent-project)
 - [🔧 Setting Up AgentTest](#-setting-up-agenttest)
@@ -13,6 +14,400 @@ This comprehensive guide walks you through using AgentTest to test AI agents and
 - [🔍 Advanced Testing Scenarios](#-advanced-testing-scenarios)
 - [📈 Results & Analysis](#-results--analysis)
 - [🌟 Best Practices](#-best-practices)
+
+## 🎯 Complete End-User Flow
+
+Follow this step-by-step guide to run the complete AgentTest user flow using the examples in this repository.
+
+### Prerequisites ✅
+
+Ensure you have AgentTest installed and your virtual environment activated:
+
+```bash
+# Check your setup
+which python
+python --version
+pip list | grep agenttest
+```
+
+### Step 1: Set Up API Keys
+
+Choose your preferred LLM provider. **For Gemini/Google AI:**
+
+```bash
+# For Gemini (Google Generative AI)
+export GOOGLE_API_KEY="your-gemini-api-key-here"
+
+# Alternative providers:
+export OPENAI_API_KEY="your-openai-key-here"
+export ANTHROPIC_API_KEY="your-anthropic-key-here"
+
+# Note: Many tests work without API keys!
+```
+
+### Step 2: Initialize AgentTest Project
+
+```bash
+# Navigate to examples directory
+cd examples
+
+# Initialize AgentTest configuration
+agenttest init --template basic
+
+# This creates .agenttest/config.yaml with default settings
+```
+
+### Step 3: Explore Available Examples
+
+The examples directory contains:
+
+1. **`basic_usage.py`** - Simple agents with different evaluators
+2. **`agents_sample.py`** - Sample AI agents (Customer Support, etc.)
+3. **`test_examples_comprehensive.py`** - Comprehensive test suite showing all evaluators
+4. **`comprehensive_examples.py`** - Advanced examples and patterns
+
+### Step 4: Run Basic Tests (No API Keys Required)
+
+Start with tests that don't require API keys:
+
+```bash
+# Run basic usage examples
+python examples/basic_usage.py
+
+# Run specific test functions
+python -c "
+from examples.basic_usage import test_echo_agent_basic, test_response_format
+print('✅ Echo test:', test_echo_agent_basic())
+print('✅ Format test:', test_response_format())
+"
+
+# Test similarity matching
+python -c "
+from examples.basic_usage import test_echo_agent_multiple
+results = test_echo_agent_multiple()
+for i, result in enumerate(results):
+    print(f'Test {i+1}: {result}')
+"
+```
+
+### Step 5: Run AgentTest CLI Commands
+
+```bash
+# Run all tests in a file
+agenttest run examples/basic_usage.py
+
+# Run with verbose output
+agenttest run examples/basic_usage.py --verbose
+
+# Run tests with specific tags
+agenttest run --tag edge_case
+agenttest run --tag performance
+
+# Run specific test patterns
+agenttest run --pattern "test_*_agent_*"
+```
+
+### Step 6: Test Different Evaluator Types
+
+#### A. String Similarity Tests
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_exact_greeting_response, test_similar_support_response
+print('🔍 Exact match:', test_exact_greeting_response())
+print('🔍 Similar match:', test_similar_support_response())
+"
+```
+
+#### B. Regex Pattern Tests
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_email_format_validation, test_phone_number_format
+print('📧 Email format:', test_email_format_validation())
+print('📞 Phone format:', test_phone_number_format())
+"
+```
+
+#### C. Contains Tests
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_security_information_presence
+from examples.basic_usage import test_smart_agent_weather
+print('🔒 Security info:', test_security_information_presence())
+print('🌤️ Weather response:', test_smart_agent_weather())
+"
+```
+
+#### D. LLM Judge Tests (Requires API Keys)
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_customer_service_quality, test_technical_explanation_quality
+print('👨‍💼 Service quality:', test_customer_service_quality())
+print('🔬 Technical explanation:', test_technical_explanation_quality())
+"
+```
+
+### Step 7: Test AI Agents (Requires API Keys)
+
+#### Customer Support Agent
+
+```bash
+# Test customer support responses
+python -c "
+from examples.agents_sample import handle_customer_query
+print('🤖 Billing query:', handle_customer_query('I need help with my billing'))
+print('🤖 Technical issue:', handle_customer_query('The app keeps crashing'))
+print('🤖 Escalation test:', handle_customer_query('This is terrible service!', urgency='high'))
+"
+```
+
+### Step 8: Run Comprehensive Test Suite
+
+```bash
+# Run all comprehensive tests
+agenttest run examples/test_examples_comprehensive.py
+
+# Run specific test categories
+agenttest run examples/test_examples_comprehensive.py --tag similarity
+agenttest run examples/test_examples_comprehensive.py --tag regex
+agenttest run examples/test_examples_comprehensive.py --tag llm_judge
+
+# Run comprehensive tests with detailed output
+agenttest run examples/test_examples_comprehensive.py --verbose --output test_results.json
+```
+
+### Step 9: Generate New Tests
+
+```bash
+# Auto-generate tests from your agent code
+agenttest generate --agent examples/agents_sample.py --count 5
+
+# Generate tests with specific format
+agenttest generate --agent examples/agents_sample.py --format python --output generated_tests.py
+
+# Generate tests for specific functions
+agenttest generate --agent examples/basic_usage.py --count 3 --format yaml
+```
+
+### Step 10: View Results and History
+
+```bash
+# View test run history
+agenttest log
+
+# View last 5 test runs
+agenttest log --limit 5
+
+# Compare results between runs (requires git)
+agenttest compare HEAD~1 HEAD
+
+# View specific metrics
+agenttest log --commit abc123
+```
+
+### Step 11: Advanced Testing Scenarios
+
+#### Edge Cases and Error Handling
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_empty_input_handling, test_nonsensical_input_handling
+print('🔍 Empty input:', test_empty_input_handling())
+print('🔍 Nonsensical input:', test_nonsensical_input_handling())
+"
+```
+
+#### Performance Testing
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_long_input_handling
+from examples.basic_usage import test_long_input
+print('⚡ Long input performance:', test_long_input_handling())
+print('⚡ Echo performance:', test_long_input())
+"
+```
+
+#### Multiple Issues Handling
+
+```bash
+python -c "
+from examples.test_examples_comprehensive import test_multiple_issues_handling
+print('🔧 Complex queries:', test_multiple_issues_handling())
+"
+```
+
+### Step 12: Launch Dashboard (Future Feature)
+
+```bash
+# Launch the web dashboard
+agenttest dashboard --port 8080
+# Open http://localhost:8080 in your browser
+```
+
+## 🧩 Available Test Functions by Category
+
+### Basic Usage (`basic_usage.py`)
+
+- `test_echo_agent_basic()` - Simple echo agent test
+- `test_echo_agent_multiple()` - Multiple test cases
+- `test_smart_agent_hello()` - Greeting functionality (LLM judge)
+- `test_smart_agent_weather()` - Weather response (contains)
+- `test_empty_input_handling()` - Edge case testing
+- `test_response_format()` - Regex pattern testing
+- `test_long_input()` - Performance testing
+
+### Sample Agents (`agents_sample.py`)
+
+- `handle_customer_query(query, customer_type, urgency)` - Customer support
+- `quick_support_response(query)` - Quick support response
+- `CustomerSupportAgent.classify_query()` - Query classification
+- `CustomerSupportAgent.should_escalate()` - Escalation logic
+- `CustomerSupportAgent.generate_response()` - Response generation
+
+### Comprehensive Tests (`test_examples_comprehensive.py`)
+
+#### String Similarity Tests
+
+- `test_exact_greeting_response()` - Exact matching
+- `test_similar_support_response()` - Similar matching
+- `test_technical_explanation_similarity()` - Technical content
+
+#### LLM Judge Tests
+
+- `test_customer_service_quality()` - Service quality evaluation
+- `test_technical_explanation_quality()` - Technical explanation quality
+- `test_creative_content_quality()` - Creative content evaluation
+- `test_bias_detection()` - Bias detection in responses
+
+#### Regex Tests
+
+- `test_email_format_validation()` - Email format validation
+- `test_phone_number_format()` - Phone number format
+- `test_order_id_format()` - Order ID format
+- `test_currency_format()` - Currency format
+- `test_url_format()` - URL format validation
+- `test_time_format()` - Time format validation
+
+#### Contains Tests
+
+- `test_security_information_presence()` - Security information
+- `test_refund_policy_elements()` - Refund policy content
+- `test_apology_response_elements()` - Apology elements
+- `test_technical_terms_presence()` - Technical terminology
+- `test_forbidden_content()` - Content filtering
+- `test_multilingual_support_info()` - Multilingual support
+
+#### Metrics Tests
+
+- `test_summary_quality_rouge()` - ROUGE score evaluation
+- `test_translation_quality_bleu()` - BLEU score evaluation
+- `test_content_quality_multiple_metrics()` - Multiple metrics
+
+#### Multi-Evaluator Tests
+
+- `test_structured_response_comprehensive()` - Multiple evaluators
+- `test_customer_escalation_comprehensive()` - Escalation scenarios
+- `test_contact_info_response_comprehensive()` - Contact information
+
+#### Edge Cases
+
+- `test_empty_input_handling()` - Empty input handling
+- `test_nonsensical_input_handling()` - Invalid input handling
+- `test_multilingual_input_handling()` - Multilingual input
+- `test_long_input_handling()` - Performance with long input
+- `test_multiple_issues_handling()` - Complex scenarios
+
+#### Safety & Compliance
+
+- `test_medical_advice_disclaimer()` - Medical advice handling
+- `test_financial_advice_appropriateness()` - Financial advice
+- `test_legal_query_handling()` - Legal query handling
+
+## 🎮 Quick Demo Commands
+
+Try these commands immediately to see AgentTest in action:
+
+```bash
+# 1. Quick function test
+python -c "from examples.basic_usage import simple_echo_agent; print(simple_echo_agent('Hello!'))"
+
+# 2. Run a single test
+python -c "from examples.basic_usage import test_echo_agent_basic; print(test_echo_agent_basic())"
+
+# 3. Test multiple evaluators
+python -c "
+from examples.test_examples_comprehensive import test_email_format_validation
+result = test_email_format_validation()
+print('Email test result:', result)
+"
+
+# 4. Check available CLI commands
+agenttest --help
+agenttest run --help
+agenttest generate --help
+
+# 5. Test customer support agent (mock version, no API key needed)
+python -c "
+from examples.agents_sample import CustomerSupportAgent
+agent = CustomerSupportAgent('demo-key')
+print('Classification:', agent.classify_query('My bill is wrong'))
+"
+```
+
+## 🔧 Configuration for Different Providers
+
+### For Gemini (Google AI)
+
+```yaml
+# .agenttest/config.yaml
+llm:
+  provider: 'google'
+  model: 'gemini-pro'
+  api_key_env: 'GOOGLE_API_KEY'
+
+evaluators:
+  llm_judge:
+    provider: 'google'
+    model: 'gemini-pro'
+```
+
+### For OpenAI
+
+```yaml
+# .agenttest/config.yaml
+llm:
+  provider: 'openai'
+  model: 'gpt-4'
+  api_key_env: 'OPENAI_API_KEY'
+
+evaluators:
+  llm_judge:
+    provider: 'openai'
+    model: 'gpt-4'
+```
+
+### For Anthropic
+
+```yaml
+# .agenttest/config.yaml
+llm:
+  provider: 'anthropic'
+  model: 'claude-3-sonnet-20240229'
+  api_key_env: 'ANTHROPIC_API_KEY'
+
+evaluators:
+  llm_judge:
+    provider: 'anthropic'
+    model: 'claude-3-sonnet-20240229'
+```
+
+---
+
+**🎉 You're now ready to run the complete AgentTest flow!** Start with the basic tests and gradually move to more advanced scenarios.
 
 ## 🚀 Quick Start
 
