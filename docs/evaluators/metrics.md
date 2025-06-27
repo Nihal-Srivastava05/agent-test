@@ -496,7 +496,3 @@ def test_batch_optimized():
         }
     }
 ```
-
-## 📚 Examples
-
-See [Advanced Examples](../examples/advanced.md#nlp-metrics-examples) for more sophisticated NLP metrics usage patterns.

@@ -466,7 +466,3 @@ llm_judge_config = {
 3. **Model Selection**: Use appropriate model for task complexity
 4. **Prompt Optimization**: Clear, specific prompts get better results
 5. **Fallback Strategy**: Have backup evaluators for API failures
-
-## 📚 Examples
-
-See [Advanced Examples](../examples/advanced.md#llm-judge-examples) for more sophisticated LLM Judge usage patterns.

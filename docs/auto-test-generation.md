@@ -558,6 +558,4 @@ See the `examples/` directory for complete examples:
 
 For detailed API documentation, see:
 
-- [TestGenerator API](api/generators.md)
-- [Configuration API](api/config.md)
 - [CLI Reference](cli-commands.md)

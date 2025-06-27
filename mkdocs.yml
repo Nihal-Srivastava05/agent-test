@@ -184,9 +184,8 @@ nav:
   - API Reference:
       - Core API: api/core.md
 
-  - Development:
-      - Contributing: CONTRIBUTING.md
-      - Changelog: CHANGELOG.md
+  - Contributing:
+      - Contributing: https://github.com/Nihal-Srivastava05/agent-test/blob/main/CONTRIBUTING.md
 
 validation:
   omitted_files: warn
