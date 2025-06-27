@@ -86,7 +86,7 @@ extra:
       link: https://pypi.org/project/agenttest/
   analytics:
     provider: google
-    property: !ENV GOOGLE_ANALYTICS_KEY
+    property: G-XXXXXXXXXX # Replace with your Google Analytics ID
 
 extra_css:
   - stylesheets/extra.css

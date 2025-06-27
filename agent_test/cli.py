@@ -588,7 +588,9 @@ def _display_comparison(comparison: dict, detailed: bool = False) -> None:
 
     # Unchanged tests (if requested)
     if comparison.get("unchanged"):
-        console.print(f"[dim]😐 Unchanged Tests ({len(comparison['unchanged'])}):[/dim]")
+        console.print(
+            f"[dim]😐 Unchanged Tests ({len(comparison['unchanged'])}):[/dim]"
+        )
         for unchanged in comparison["unchanged"][:5]:  # Show only first 5
             console.print(f"  • [dim]{unchanged['test_name']}[/dim]")
         if len(comparison["unchanged"]) > 5:

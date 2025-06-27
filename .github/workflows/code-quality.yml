@@ -28,11 +28,11 @@ jobs:
 
       - name: Check code formatting with Black
         run: |
-          black --check --diff agent_test/ tests/ examples/
+          black --check --diff agent_test/ tests/ examples/ --line-length=88 --target-version=py38
 
       - name: Check import sorting with isort
         run: |
-          isort --check-only --diff agent_test/ tests/ examples/
+          isort --check-only --diff agent_test/ tests/ examples/ --profile=black --line-length=88
 
       # - name: Lint with flake8
       #   run: |

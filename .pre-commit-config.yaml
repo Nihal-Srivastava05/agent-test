@@ -5,22 +5,27 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        exclude: ^mkdocs\.yml$
       - id: check-added-large-files
       - id: check-case-conflict
       - id: check-merge-conflict
       - id: debug-statements
 
   - repo: https://github.com/psf/black
-    rev: 23.12.1
+    rev: 24.10.0
     hooks:
       - id: black
         language_version: python3
+        files: ^(agent_test|tests|examples)/.*\.py$
+        args: ['--config=pyproject.toml']
 
   - repo: https://github.com/pycqa/isort
     rev: 5.13.2
     hooks:
       - id: isort
         name: isort (python)
+        files: ^(agent_test|tests|examples)/.*\.py$
+        args: ['--settings-path=pyproject.toml']
 
   # - repo: https://github.com/pycqa/flake8
   #   rev: 7.0.0
