@@ -5,7 +5,6 @@ Tracks test results with git commit information for regression analysis.
 """
 
 import json
-import os
 import time
 from datetime import datetime
 from pathlib import Path
@@ -149,7 +148,10 @@ class GitLogger:
             "commit_hash_short": log_entry["git_info"].get("commit_hash_short"),
             "branch": log_entry["git_info"].get("branch"),
             "summary": log_entry["summary"],
-            "filename": f"{datetime.fromisoformat(log_entry['timestamp']).strftime('%Y%m%d_%H%M%S')}_{log_entry['git_info'].get('commit_hash_short', 'unknown')}.json",
+            "filename": (
+                f"{datetime.fromisoformat(log_entry['timestamp']).strftime('%Y%m%d_%H%M%S')}"
+                + f"_{log_entry['git_info'].get('commit_hash_short', 'unknown')}.json"
+            ),
         }
 
         # Add to runs list

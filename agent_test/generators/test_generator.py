@@ -5,12 +5,9 @@ Automatically generates test cases using LLMs by analyzing agent code and docstr
 """
 
 import ast
-import importlib.util
-import inspect
 import os
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional
 
 from jinja2 import Template
 
@@ -853,7 +850,10 @@ class TestGenerator:
             messages=[
                 {
                     "role": "system",
-                    "content": "You are an expert test case generator. Generate test cases in valid JSON format exactly as requested. Focus on creating realistic, comprehensive test cases.",
+                    "content": (
+                        "You are an expert test case generator. Generate test cases in valid JSON format exactly as requested."
+                        + " Focus on creating realistic, comprehensive test cases."
+                    ),
                 },
                 {"role": "user", "content": prompt},
             ],
@@ -884,7 +884,8 @@ class TestGenerator:
 
         # Add system instruction about being a test case generator
         full_prompt = (
-            "You are an expert test case generator. Generate test cases in valid JSON format exactly as requested. Focus on creating realistic, comprehensive test cases.\n\n"
+            "You are an expert test case generator. Generate test cases in valid JSON format exactly as requested."
+            + " Focus on creating realistic, comprehensive test cases.\n\n"
             + prompt
         )
 

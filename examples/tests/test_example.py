@@ -4,7 +4,7 @@ Example AgentTest test file.
 This demonstrates basic testing patterns with the @agent_test decorator.
 """
 
-from agent_test import agent_test, run_test
+from agent_test import agent_test
 
 
 def simple_agent(input_text: str) -> str:

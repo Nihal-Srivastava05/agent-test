@@ -4,9 +4,8 @@ LLM-as-judge evaluator for AgentTest.
 Uses LLMs to evaluate test outputs based on criteria.
 """
 
-import asyncio
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .base import BaseEvaluator, EvaluationResult
 

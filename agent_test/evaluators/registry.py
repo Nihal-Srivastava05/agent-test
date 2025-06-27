@@ -7,7 +7,6 @@ Manages and provides access to all available evaluators.
 from typing import Any, Dict, Optional
 
 from ..core.config import Config
-from ..utils.exceptions import EvaluationError
 from .base import (
     BaseEvaluator,
     ContainsEvaluator,

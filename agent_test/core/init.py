@@ -4,11 +4,7 @@ Project initialization for AgentTest.
 Handles setting up new projects with templates and examples.
 """
 
-import shutil
 from pathlib import Path
-from typing import Any, Dict
-
-from jinja2 import Template
 
 from ..utils.exceptions import AgentTestError
 from .config import Config

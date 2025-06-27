@@ -5,23 +5,11 @@ Provides structured logging similar to pytest with detailed test information,
 progress tracking, and failure analysis.
 """
 
-import logging
-import sys
 import time
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from rich.console import Console
-from rich.live import Live
-from rich.panel import Panel
-from rich.progress import (
-    BarColumn,
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    TimeElapsedColumn,
-)
-from rich.table import Table
 from rich.tree import Tree
 
 
@@ -126,7 +114,6 @@ class AgentTestLogger:
     ):
         """Log test completion."""
         self.completed_tests += 1
-        status = "PASSED" if passed else "FAILED"
 
         details = {
             "duration": duration,

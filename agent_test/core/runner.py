@@ -5,23 +5,16 @@ Handles test discovery, execution, and evaluation.
 """
 
 import importlib
-import inspect
 import sys
 import time
 import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from ..evaluators.registry import EvaluatorRegistry
-from ..utils.exceptions import TestDiscoveryError, TestExecutionError
+from ..utils.exceptions import TestDiscoveryError
 from .config import Config
-from .decorators import (
-    TestCase,
-    TestResult,
-    TestResults,
-    get_registered_tests,
-    is_agent_test,
-)
+from .decorators import TestCase, TestResult, TestResults, get_registered_tests
 from .logging import get_logger, setup_logger
 
 
@@ -271,7 +264,7 @@ class TestRunner:
 
             if verbose:
                 print(f"  ❌ EXCEPTION: {error_message}")
-                print(f"  📍 Traceback:")
+                print("  📍 Traceback:")
                 traceback.print_exc()
 
             return TestResult(

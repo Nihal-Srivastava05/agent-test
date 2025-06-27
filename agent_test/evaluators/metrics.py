@@ -4,7 +4,7 @@ Metrics evaluator for AgentTest.
 Provides support for common NLP evaluation metrics like ROUGE, BLEU, and METEOR.
 """
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from .base import BaseEvaluator, EvaluationResult
 
@@ -173,7 +173,6 @@ class MetricsEvaluator(BaseEvaluator):
 
         # Calculate overlap
         overlap = len(actual_words & reference_words)
-        union = len(actual_words | reference_words)
 
         # Calculate precision and recall first
         precision = overlap / len(actual_words) if actual_words else 0

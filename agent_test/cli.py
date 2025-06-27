@@ -10,13 +10,12 @@ from typing import List, Optional
 import typer
 from rich.console import Console
 from rich.panel import Panel
-from rich.progress import track
 from rich.table import Table
 
 from .core.config import Config
 from .core.git_logger import GitLogger
 from .core.init import initialize_project
-from .core.logging import get_logger, setup_logger
+from .core.logging import setup_logger
 from .core.runner import TestRunner
 from .generators.test_generator import TestGenerator
 from .utils.exceptions import AgentTestError
@@ -412,13 +411,11 @@ def _display_results(results) -> None:
 
     summary_text = f"Total: {total} | Passed: {passed} | Failed: {failed}"
     if failed > 0:
-        summary_text += f"\n\n[bold red]💡 Tip:[/bold red] Check the failure details above for specific issues."
-        summary_text += f"\n[bold blue]🔧 Common fixes:[/bold blue]"
-        summary_text += (
-            f"\n  • Verify API keys are set (GOOGLE_API_KEY, OPENAI_API_KEY)"
-        )
-        summary_text += f"\n  • Check test input/expected output formats"
-        summary_text += f"\n  • Review evaluation criteria and thresholds"
+        summary_text += "\n\n[bold red]💡 Tip:[/bold red] Check the failure details above for specific issues."
+        summary_text += "\n[bold blue]🔧 Common fixes:[/bold blue]"
+        summary_text += "\n  • Verify API keys are set (GOOGLE_API_KEY, OPENAI_API_KEY)"
+        summary_text += "\n  • Check test input/expected output formats"
+        summary_text += "\n  • Review evaluation criteria and thresholds"
 
     summary = Panel(summary_text, title="Summary", title_align="left")
     console.print(summary)
@@ -447,8 +444,6 @@ def _display_history(history: List[dict]) -> None:
 
 def _display_comparison(comparison: dict, detailed: bool = False) -> None:
     """Display enhanced comparison results."""
-    from rich.panel import Panel
-    from rich.table import Table
     from rich.tree import Tree
 
     # Header with metadata
@@ -638,7 +633,8 @@ def _display_test_change(
             duration_change = changes["duration"]
             duration_color = "green" if duration_change["improvement"] else "yellow"
             console.print(
-                f"    Duration: [{duration_color}]{duration_change['from']:.3f}s → {duration_change['to']:.3f}s ({duration_change['change']:+.3f}s)[/{duration_color}]"
+                f"Duration: [{duration_color}]{duration_change['from']:.3f}s "
+                + f"→ {duration_change['to']:.3f}s ({duration_change['change']:+.3f}s)[/{duration_color}]"
             )
 
         if "evaluators" in changes:

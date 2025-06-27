@@ -6,7 +6,7 @@ Handles loading and validation of configuration files using Pydantic.
 
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 import yaml
 from dotenv import load_dotenv

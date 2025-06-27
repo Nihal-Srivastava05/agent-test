@@ -6,7 +6,7 @@ and real-world use cases.
 """
 
 from agent_test import agent_test
-from examples.agents_sample import handle_customer_query, quick_support_response
+from examples.agents_sample import handle_customer_query
 
 # =============================================================================
 # STRING SIMILARITY EVALUATOR EXAMPLES

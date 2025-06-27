@@ -6,11 +6,10 @@ These are pytest tests for the framework itself.
 
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
 
 import pytest
 
-from agent_test.core.config import Config, LLMConfig
+from agent_test.core.config import Config
 from agent_test.core.decorators import TestResult, TestResults, agent_test
 from agent_test.evaluators.base import EvaluationResult, StringSimilarityEvaluator
 from agent_test.evaluators.registry import EvaluatorRegistry

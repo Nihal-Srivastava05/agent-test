@@ -5,10 +5,8 @@ This file contains sample implementations of different types of AI agents
 that can be used to demonstrate AgentTest features.
 """
 
-import json
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Dict, Optional
 
 import google.generativeai as genai
 

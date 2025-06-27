@@ -4,7 +4,7 @@ Basic usage example for AgentTest.
 This demonstrates how to create and test a simple AI agent.
 """
 
-from agent_test import agent_test, run_test
+from agent_test import agent_test
 
 
 def simple_echo_agent(input_text: str) -> str:
