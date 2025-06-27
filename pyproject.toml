@@ -82,10 +82,10 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/agenttest-ai/agenttest"
-Documentation = "https://agenttest.readthedocs.io"
-Repository = "https://github.com/agenttest-ai/agenttest"
-Issues = "https://github.com/agenttest-ai/agenttest/issues"
+Homepage = "https://github.com/Nihal-Srivastava05/agent-test"
+Documentation = "https://nihal-srivastava05.github.io/agent-test/"
+Repository = "https://github.com/Nihal-Srivastava05/agent-test"
+Issues = "https://github.com/Nihal-Srivastava05/agent-test/issues"
 
 [project.scripts]
 agenttest = "agent_test.cli:app"

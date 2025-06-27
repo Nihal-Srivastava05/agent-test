@@ -9,7 +9,7 @@ Thank you for your interest in contributing to AgentTest! We welcome contributio
 1. **Fork and Clone**
 
    ```bash
-   git clone https://github.com/yourusername/agenttest.git
+   git clone https://github.com/Nihal-Srivastava05/agent-test.git
    cd agenttest
    ```
 
@@ -319,9 +319,9 @@ Contributors will be:
 
 ## ❓ Questions?
 
-- 💬 [Discussions](https://github.com/agenttest-ai/agenttest/discussions)
-- 📧 [Email](mailto:contributors@agenttest.ai)
-- 🐛 [Issues](https://github.com/agenttest-ai/agenttest/issues)
+- 💬 [Discussions](https://github.com/Nihal-Srivastava05/agent-test/discussions)
+- 📧 [Email](mailto:nihal.srivastava05@gmail.com)
+- 🐛 [Issues](https://github.com/Nihal-Srivastava05/agent-test/issues)
 
 ## 📜 Code of Conduct
 

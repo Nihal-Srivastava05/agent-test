@@ -1497,10 +1497,10 @@ agenttest run --test test_specific_function --debug
 
 ## 🆘 Getting Help
 
-- **Issues**: [GitHub Issues](https://github.com/agenttest-ai/agenttest/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/agenttest-ai/agenttest/discussions)
-- **Email**: support@agenttest.ai
-- **Documentation**: [Full Documentation](https://agenttest.readthedocs.io)
+- **Issues**: [GitHub Issues](https://github.com/Nihal-Srivastava05/agent-test/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/Nihal-Srivastava05/agent-test/discussions)
+- **Email**: nihal.srivastava05@gmail.com
+- **Documentation**: [Full Documentation](https://nihal-srivastava05.github.io/agent-test/)
 
 ---
 

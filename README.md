@@ -24,11 +24,6 @@ AgentTest is a comprehensive testing framework designed specifically for AI agen
 ```bash
 # Basic installation
 pip install agenttest
-
-# With framework support
-pip install agenttest[langchain]     # For LangChain support
-pip install agenttest[llamaindex]    # For LlamaIndex support
-pip install agenttest[all]           # Everything included
 ```
 
 ## 🏁 Quick Start
@@ -516,7 +511,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 
 ```bash
 # Clone the repository
-git clone https://github.com/agenttest-ai/agenttest.git
+git clone https://github.com/Nihal-Srivastava05/agent-test
 cd agenttest
 
 # Install in development mode
@@ -543,10 +538,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🆘 Support
 
-- 📖 [Documentation](https://agenttest.readthedocs.io)
-- 🐛 [Issue Tracker](https://github.com/agenttest-ai/agenttest/issues)
-- 💬 [Discussions](https://github.com/agenttest-ai/agenttest/discussions)
-- 📧 [Email Support](mailto:support@agenttest.ai)
+- 📖 [Documentation](https://nihal-srivastava05.github.io/agent-test/)
+- 🐛 [Issue Tracker](https://github.com/Nihal-Srivastava05/agent-test/issues)
+- 💬 [Discussions](https://github.com/Nihal-Srivastava05/agent-test/discussions)
+- 📧 [Email Support](mailto:nihal.srivastava05@gmail.com)
 
 ---
 

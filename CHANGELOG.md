@@ -105,4 +105,4 @@ agenttest init
 agenttest run
 ```
 
-For detailed documentation, visit: https://agenttest-ai.github.io/agenttest/
+For detailed documentation, visit: https://nihal-srivastava05.github.io/agent-test/

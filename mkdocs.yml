@@ -1,7 +1,7 @@
 site_name: AgentTest Documentation
 site_description: A pytest-like testing framework for AI agents and prompts
 site_author: AgentTest Contributors
-site_url: https://agenttest-ai.github.io/agenttest/
+site_url: https://nihal-srivastava05.github.io/agent-test/
 
 repo_name: Nihal-Srivastava05/agent-test
 repo_url: https://github.com/Nihal-Srivastava05/agent-test
@@ -81,7 +81,7 @@ extra:
     provider: mike
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/agenttest-ai/agenttest
+      link: https://github.com/Nihal-Srivastava05/agent-test
     - icon: fontawesome/brands/python
       link: https://pypi.org/project/agenttest/
   analytics:
@@ -136,8 +136,8 @@ markdown_extensions:
   - pymdownx.magiclink:
       normalize_issue_symbols: true
       repo_url_shorthand: true
-      user: agenttest-ai
-      repo: agenttest
+      user: Nihal-Srivastava05
+      repo: agent-test
   - pymdownx.mark
   - pymdownx.smartsymbols
   - pymdownx.snippets:

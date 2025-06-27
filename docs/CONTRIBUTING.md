@@ -319,9 +319,9 @@ Contributors will be:
 
 ## ❓ Questions?
 
-- 💬 [Discussions](https://github.com/agenttest-ai/agenttest/discussions)
-- 📧 [Email](mailto:contributors@agenttest.ai)
-- 🐛 [Issues](https://github.com/agenttest-ai/agenttest/issues)
+- 💬 [Discussions](https://github.com/Nihal-Srivastava05/agent-test/discussions)
+- 📧 [Email](mailto:nihal.srivastava05@gmail.com)
+- 🐛 [Issues](https://github.com/Nihal-Srivastava05/agent-test/issues)
 
 ## 📜 Code of Conduct
 
