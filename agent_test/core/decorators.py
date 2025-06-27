@@ -6,8 +6,8 @@ Provides the @agent_test decorator similar to pytest's structure.
 
 import functools
 import inspect
-from typing import List, Dict, Any, Callable, Optional, Union
 from dataclasses import dataclass, field
+from typing import Any, Callable, Dict, List, Optional, Union
 
 # Global registry for discovered tests
 _test_registry: Dict[str, "TestCase"] = {}
@@ -16,6 +16,7 @@ _test_registry: Dict[str, "TestCase"] = {}
 @dataclass
 class TestCase:
     """Represents a test case discovered by AgentTest."""
+
     name: str
     function: Callable
     criteria: List[str]
@@ -32,26 +33,27 @@ def agent_test(
     tags: Optional[Union[str, List[str]]] = None,
     timeout: Optional[int] = None,
     retry_count: int = 0,
-    **metadata
+    **metadata,
 ) -> Callable:
     """
     Decorator to mark functions as agent tests.
-    
+
     Args:
         criteria: Evaluation criteria to use (e.g., ["similarity", "llm_judge"])
         tags: Tags for test categorization
         timeout: Test timeout in seconds
         retry_count: Number of retries on failure
         **metadata: Additional metadata for the test
-    
+
     Returns:
         Decorated function
-        
+
     Example:
         @agent_test(criteria=["similarity", "llm_judge"], tags=["summarization"])
         def test_my_agent():
             return {"input": "test", "actual": "result", "expected": "result"}
     """
+
     def decorator(func: Callable) -> Callable:
         # Normalize criteria
         if criteria is None:
@@ -60,7 +62,7 @@ def agent_test(
             test_criteria = [criteria]
         else:
             test_criteria = list(criteria)
-        
+
         # Normalize tags
         if tags is None:
             test_tags = []
@@ -68,12 +70,12 @@ def agent_test(
             test_tags = [tags]
         else:
             test_tags = list(tags)
-        
+
         # Get module and file information
         frame = inspect.currentframe().f_back
-        module_name = frame.f_globals.get('__name__', 'unknown')
-        file_path = frame.f_globals.get('__file__', 'unknown')
-        
+        module_name = frame.f_globals.get("__name__", "unknown")
+        file_path = frame.f_globals.get("__file__", "unknown")
+
         # Create test case
         test_case = TestCase(
             name=func.__name__,
@@ -84,23 +86,23 @@ def agent_test(
             retry_count=retry_count,
             metadata=metadata,
             module=module_name,
-            file_path=file_path
+            file_path=file_path,
         )
-        
+
         # Register the test
         test_id = f"{module_name}::{func.__name__}"
         _test_registry[test_id] = test_case
-        
+
         # Mark the function as a test
         func._agenttest_marker = True
         func._agenttest_case = test_case
-        
+
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             return func(*args, **kwargs)
-        
+
         return wrapper
-    
+
     return decorator
 
 
@@ -117,12 +119,12 @@ def clear_test_registry() -> None:
 
 def is_agent_test(func: Callable) -> bool:
     """Check if a function is marked as an agent test."""
-    return hasattr(func, '_agenttest_marker') and func._agenttest_marker
+    return hasattr(func, "_agenttest_marker") and func._agenttest_marker
 
 
 def get_test_case(func: Callable) -> Optional[TestCase]:
     """Get the test case for a function."""
-    if hasattr(func, '_agenttest_case'):
+    if hasattr(func, "_agenttest_case"):
         return func._agenttest_case
     return None
 
@@ -131,6 +133,7 @@ def get_test_case(func: Callable) -> Optional[TestCase]:
 @dataclass
 class TestResult:
     """Represents the result of a test execution."""
+
     test_name: str
     passed: bool
     score: Optional[float] = None
@@ -140,56 +143,57 @@ class TestResult:
     evaluations: Dict[str, Any] = field(default_factory=dict)
 
 
-@dataclass 
+@dataclass
 class TestResults:
     """Collection of test results."""
+
     test_results: List[TestResult] = field(default_factory=list)
     summary: Dict[str, Any] = field(default_factory=dict)
     metadata: Dict[str, Any] = field(default_factory=dict)
-    
+
     def add_result(self, result: TestResult) -> None:
         """Add a test result."""
         self.test_results.append(result)
-    
+
     def has_failures(self) -> bool:
         """Check if any tests failed."""
         return any(not result.passed for result in self.test_results)
-    
+
     def get_pass_rate(self) -> float:
         """Get the pass rate as a percentage."""
         if not self.test_results:
             return 0.0
         passed = sum(1 for result in self.test_results if result.passed)
         return (passed / len(self.test_results)) * 100
-    
+
     def get_summary(self) -> Dict[str, Any]:
         """Get a summary of the test results."""
         total = len(self.test_results)
         passed = sum(1 for result in self.test_results if result.passed)
         failed = total - passed
-        
+
         avg_score = None
         if self.test_results:
             scores = [r.score for r in self.test_results if r.score is not None]
             if scores:
                 avg_score = sum(scores) / len(scores)
-        
+
         total_duration = sum(result.duration for result in self.test_results)
-        
+
         return {
             "total_tests": total,
             "passed": passed,
             "failed": failed,
             "pass_rate": self.get_pass_rate(),
             "average_score": avg_score,
-            "total_duration": total_duration
+            "total_duration": total_duration,
         }
-    
+
     def save_to_file(self, file_path: str) -> None:
         """Save results to a JSON file."""
         import json
         from pathlib import Path
-        
+
         data = {
             "summary": self.get_summary(),
             "metadata": self.metadata,
@@ -201,10 +205,10 @@ class TestResults:
                     "duration": result.duration,
                     "error": result.error,
                     "details": result.details,
-                    "evaluations": result.evaluations
+                    "evaluations": result.evaluations,
                 }
                 for result in self.test_results
-            ]
+            ],
         }
-        
-        Path(file_path).write_text(json.dumps(data, indent=2)) 
+
+        Path(file_path).write_text(json.dumps(data, indent=2))

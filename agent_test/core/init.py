@@ -6,55 +6,54 @@ Handles setting up new projects with templates and examples.
 
 import shutil
 from pathlib import Path
-from typing import Dict, Any
+from typing import Any, Dict
+
 from jinja2 import Template
 
-from .config import Config
 from ..utils.exceptions import AgentTestError
+from .config import Config
 
 
 def initialize_project(
-    project_path: Path, 
-    template: str = "basic", 
-    overwrite: bool = False
+    project_path: Path, template: str = "basic", overwrite: bool = False
 ) -> bool:
     """
     Initialize a new AgentTest project.
-    
+
     Args:
         project_path: Directory to initialize
         template: Template to use (basic, langchain, llamaindex)
         overwrite: Whether to overwrite existing files
-        
+
     Returns:
         True if successful, False otherwise
     """
     project_path = Path(project_path)
     agenttest_dir = project_path / ".agenttest"
-    
+
     # Check if project already exists
     if agenttest_dir.exists() and not overwrite:
         raise AgentTestError(
             f"AgentTest project already exists in {project_path}. "
             "Use --overwrite to replace existing configuration."
         )
-    
+
     try:
         # Create directory structure
         _create_directory_structure(project_path, template)
-        
+
         # Create configuration file
         config = Config.create_default(template)
         config.save(agenttest_dir / "config.yaml")
-        
+
         # Create example files
         _create_example_files(project_path, template)
-        
+
         # Create templates
         _create_templates(project_path, template)
-        
+
         return True
-        
+
     except Exception as e:
         raise AgentTestError(f"Failed to initialize project: {e}")
 
@@ -68,21 +67,23 @@ def _create_directory_structure(project_path: Path, template: str) -> None:
         "tests",
         "examples",
     ]
-    
+
     # Template-specific directories
     if template in ["langchain", "llamaindex"]:
-        directories.extend([
-            "agents",
-            "data",
-        ])
-    
+        directories.extend(
+            [
+                "agents",
+                "data",
+            ]
+        )
+
     for directory in directories:
         (project_path / directory).mkdir(parents=True, exist_ok=True)
 
 
 def _create_example_files(project_path: Path, template: str) -> None:
     """Create example test files and agents."""
-    
+
     # Create basic example test
     basic_test_content = '''"""
 Example AgentTest test file.
@@ -103,9 +104,9 @@ def test_simple_agent():
     """Test the simple agent with basic input."""
     input_text = "Hello, world!"
     expected = "Agent response: Hello, world!"
-    
+
     actual = simple_agent(input_text)
-    
+
     # AgentTest will automatically evaluate using configured criteria
     return {
         "input": input_text,
@@ -123,11 +124,11 @@ def test_agent_with_different_inputs():
             "expected": "Agent response: What is AI?"
         },
         {
-            "input": "How are you?", 
+            "input": "How are you?",
             "expected": "Agent response: How are you?"
         }
     ]
-    
+
     results = []
     for case in test_cases:
         actual = simple_agent(case["input"])
@@ -136,7 +137,7 @@ def test_agent_with_different_inputs():
             "expected": case["expected"],
             "actual": actual
         })
-    
+
     return results
 
 
@@ -144,9 +145,9 @@ if __name__ == "__main__":
     # You can run tests directly or use: agenttest run
     print("Example test - run with: agenttest run")
 '''
-    
+
     (project_path / "tests" / "test_example.py").write_text(basic_test_content)
-    
+
     # Template-specific examples
     if template == "langchain":
         _create_langchain_examples(project_path)
@@ -156,7 +157,7 @@ if __name__ == "__main__":
 
 def _create_langchain_examples(project_path: Path) -> None:
     """Create LangChain-specific examples."""
-    
+
     agent_content = '''"""
 Example LangChain agent for AgentTest.
 """
@@ -172,17 +173,17 @@ except ImportError:
 
 class SummarizerAgent:
     """A simple LangChain-based summarization agent."""
-    
+
     def __init__(self):
         self.llm = OpenAI(temperature=0)
-        
+
         prompt_template = PromptTemplate(
             input_variables=["text"],
             template="Please summarize the following text in 2-3 sentences:\\n\\n{text}\\n\\nSummary:"
         )
-        
+
         self.chain = LLMChain(llm=self.llm, prompt=prompt_template)
-    
+
     def summarize(self, text: str) -> str:
         """Summarize the given text."""
         return self.chain.run(text=text)
@@ -196,9 +197,9 @@ def run_summarization(text: str) -> str:
     """Function wrapper for the summarizer agent."""
     return summarizer.summarize(text)
 '''
-    
+
     (project_path / "agents" / "langchain_agent.py").write_text(agent_content)
-    
+
     # LangChain test example
     test_content = '''"""
 Example tests for LangChain agents.
@@ -212,15 +213,15 @@ from agents.langchain_agent import run_summarization
 def test_summarization():
     """Test text summarization."""
     input_text = """
-    Artificial Intelligence (AI) is a branch of computer science that aims to create 
-    intelligent machines capable of performing tasks that typically require human 
-    intelligence. These tasks include learning, reasoning, problem-solving, perception, 
-    and language understanding. AI has applications in various fields such as healthcare, 
+    Artificial Intelligence (AI) is a branch of computer science that aims to create
+    intelligent machines capable of performing tasks that typically require human
+    intelligence. These tasks include learning, reasoning, problem-solving, perception,
+    and language understanding. AI has applications in various fields such as healthcare,
     finance, transportation, and entertainment.
     """
-    
+
     actual = run_summarization(input_text)
-    
+
     # For summarization, we don't have a fixed expected output
     # Instead, we rely on LLM-as-judge evaluation
     return {
@@ -239,7 +240,7 @@ def test_empty_input_handling():
     """Test how agent handles empty input."""
     input_text = ""
     actual = run_summarization(input_text)
-    
+
     return {
         "input": input_text,
         "actual": actual,
@@ -248,13 +249,13 @@ def test_empty_input_handling():
         }
     }
 '''
-    
+
     (project_path / "tests" / "test_langchain_agent.py").write_text(test_content)
 
 
 def _create_llamaindex_examples(project_path: Path) -> None:
     """Create LlamaIndex-specific examples."""
-    
+
     agent_content = '''"""
 Example LlamaIndex agent for AgentTest.
 """
@@ -269,11 +270,11 @@ except ImportError:
 
 class RAGAgent:
     """A simple RAG agent using LlamaIndex."""
-    
+
     def __init__(self, data_dir: str = "data"):
         llm = OpenAI(model="gpt-3.5-turbo", temperature=0)
         service_context = ServiceContext.from_defaults(llm=llm)
-        
+
         # Load documents from data directory
         try:
             documents = SimpleDirectoryReader(data_dir).load_data()
@@ -283,9 +284,9 @@ class RAGAgent:
         except Exception:
             # If no documents, create empty index
             self.index = VectorStoreIndex([], service_context=service_context)
-        
+
         self.query_engine = self.index.as_query_engine()
-    
+
     def query(self, question: str) -> str:
         """Query the RAG system."""
         response = self.query_engine.query(question)
@@ -300,9 +301,9 @@ def run_query(question: str) -> str:
     """Function wrapper for the RAG agent."""
     return rag_agent.query(question)
 '''
-    
+
     (project_path / "agents" / "llama_agent.py").write_text(agent_content)
-    
+
     # Create sample data file
     sample_data = """
 AgentTest is a pytest-like testing framework for AI agents and prompts.
@@ -317,13 +318,13 @@ Key features:
 
 AgentTest helps developers ensure their AI agents are reliable, performant, and free from regressions.
 """
-    
+
     (project_path / "data" / "agenttest_info.txt").write_text(sample_data)
 
 
 def _create_templates(project_path: Path, template: str) -> None:
     """Create template files for test generation."""
-    
+
     python_test_template = '''"""
 Generated test for {{ agent_name }}.
 
@@ -342,9 +343,9 @@ def test_{{ agent_name }}_case_{{ loop.index }}():
     {% if test_case.expected %}
     expected = {{ test_case.expected | tojson }}
     {% endif %}
-    
+
     actual = {{ agent_function }}(input_data)
-    
+
     return {
         "input": input_data,
         {% if test_case.expected %}
@@ -358,8 +359,8 @@ def test_{{ agent_name }}_case_{{ loop.index }}():
 
 {% endfor %}
 '''
-    
-    yaml_test_template = '''# Generated tests for {{ agent_name }}
+
+    yaml_test_template = """# Generated tests for {{ agent_name }}
 # This file was automatically generated by AgentTest
 
 agent: {{ agent_name }}
@@ -377,14 +378,14 @@ test_cases:
     evaluation_criteria: {{ test_case.evaluation_criteria | tojson }}
     {% endif %}
 {% endfor %}
-'''
-    
+"""
+
     templates_dir = project_path / ".agenttest" / "templates"
     (templates_dir / "test_template.py.j2").write_text(python_test_template)
     (templates_dir / "test_template.yaml.j2").write_text(yaml_test_template)
-    
+
     # Create .gitignore for the project
-    gitignore_content = '''# AgentTest
+    gitignore_content = """# AgentTest
 .agenttest/results/
 .agenttest/.env
 
@@ -428,6 +429,6 @@ venv.bak/
 # OS
 .DS_Store
 Thumbs.db
-'''
-    
-    (project_path / ".gitignore").write_text(gitignore_content) 
+"""
+
+    (project_path / ".gitignore").write_text(gitignore_content)
