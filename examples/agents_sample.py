@@ -8,7 +8,13 @@ that can be used to demonstrate AgentTest features.
 from dataclasses import dataclass
 from typing import Dict, Optional
 
-import google.generativeai as genai
+try:
+    import google.generativeai as genai
+
+    HAS_GOOGLE_GENAI = True
+except ImportError:
+    genai = None
+    HAS_GOOGLE_GENAI = False
 
 
 # Customer Support Agent
@@ -27,6 +33,11 @@ class CustomerSupportAgent:
 
     def __init__(self, api_key: str):
         """Initialize the customer support agent."""
+        if not HAS_GOOGLE_GENAI:
+            raise ImportError(
+                "google-generativeai is required for GoogleAI agent. "
+                "Install with: pip install 'agenttest[google]'"
+            )
         genai.configure(api_key=api_key)
         self.model = genai.GenerativeModel("gemini-1.5-flash")
 
@@ -153,12 +164,23 @@ def handle_customer_query(
     """Handle a customer query with default agent."""
     import os
 
+    if not HAS_GOOGLE_GENAI:
+        return {
+            "response": "Google Generative AI is not available. Please install with: pip install 'agenttest[google]'",
+            "action": "error",
+            "category": "system",
+            "error": "google-generativeai not installed",
+        }
+
     # Try both Gemini environment variable names
     api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
     if not api_key:
-        raise ValueError(
-            "GOOGLE_API_KEY or GEMINI_API_KEY environment variable not set"
-        )
+        return {
+            "response": "API key not configured. Please set GOOGLE_API_KEY or GEMINI_API_KEY environment variable.",
+            "action": "error",
+            "category": "system",
+            "error": "API key not set",
+        }
 
     agent = CustomerSupportAgent(api_key)
     customer_query = CustomerQuery(
@@ -172,3 +194,21 @@ def quick_support_response(query: str) -> str:
     """Get a quick support response (just the text)."""
     result = handle_customer_query(query)
     return result["response"]
+
+
+def classify_query(query: str) -> str:
+    """Classify a query without needing API key or Google AI."""
+    query_lower = query.lower()
+
+    if any(word in query_lower for word in ["bill", "payment", "charge", "refund"]):
+        return "billing"
+    elif any(word in query_lower for word in ["bug", "error", "crash", "not working"]):
+        return "technical"
+    elif any(
+        word in query_lower for word in ["account", "login", "password", "access"]
+    ):
+        return "account"
+    elif any(word in query_lower for word in ["feature", "how to", "documentation"]):
+        return "product"
+    else:
+        return "general"
